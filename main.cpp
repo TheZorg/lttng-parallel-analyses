@@ -1,5 +1,9 @@
+#include "traceanalysis.h"
+#include "countanalysis.h"
+
 #include <QCoreApplication>
 #include <QCommandLineParser>
+#include <QTimer>
 
 #include <iostream>
 
@@ -17,9 +21,7 @@ struct Options {
     QString tracePath;
 };
 
-QStringList analysisList = QStringList() << "count"
-                                         << "cpu"
-                                         << "io";
+QStringList analysisList = QStringList() << "count" << "cpu" << "io";
 
 CommandLineParseResult parseCommandLine(QCommandLineParser &parser, Options &opts, QString *errorMessage) {
     const QCommandLineOption helpOption = parser.addHelpOption();
@@ -59,24 +61,20 @@ CommandLineParseResult parseCommandLine(QCommandLineParser &parser, Options &opt
         opts.verbose = true;
     }
 
-    if (parser.isSet(threadOption)) {
-        const QString threadsString = parser.value(threadOption);
-        int threads = threadsString.toInt();
-        if (threads <= 0) {
-            *errorMessage = "Number of threads must be 1 or more.";
-            return CommandLineParseResult::Error;
-        }
-        opts.threads = threads;
+    const QString threadsString = parser.value(threadOption);
+    int threads = threadsString.toInt();
+    if (threads <= 0) {
+        *errorMessage = "Number of threads must be 1 or more.";
+        return CommandLineParseResult::Error;
     }
+    opts.threads = threads;
 
-    if (parser.isSet(analysisOption)) {
-        const QString analysisString = parser.value(analysisOption);
-        if (!analysisList.contains(analysisString)) {
-            *errorMessage = "Invalid analysis.";
-            return CommandLineParseResult::Error;
-        }
-        opts.analysis = analysisString;
+    const QString analysisString = parser.value(analysisOption);
+    if (!analysisList.contains(analysisString)) {
+        *errorMessage = "Invalid analysis.";
+        return CommandLineParseResult::Error;
     }
+    opts.analysis = analysisString;
 
     const QStringList positionalArguments = parser.positionalArguments();
     if (positionalArguments.isEmpty()) {
@@ -90,6 +88,13 @@ CommandLineParseResult parseCommandLine(QCommandLineParser &parser, Options &opt
     opts.tracePath = positionalArguments.first();
 
     return CommandLineParseResult::OK;
+}
+
+TraceAnalysis* getAnalysisFromName(QString analysisName, QCoreApplication *app) {
+    if (analysisName == "count") {
+        return new CountAnalysis(app);
+    }
+    return nullptr;
 }
 
 int main(int argc, char *argv[]) {
@@ -120,6 +125,29 @@ int main(int argc, char *argv[]) {
         parser.showHelp();
         Q_UNREACHABLE();
     }
+
+    if (opts.verbose) {
+        std::cout << "Opts : " << std::endl;
+        std::cout << "--thread : " << opts.threads << std::endl;
+        std::cout << "--analysis : " << qPrintable(opts.analysis) << std::endl;
+        std::cout << "<path/to/trace> : " << qPrintable(opts.tracePath) << std::endl;
+    }
+
+    TraceAnalysis *analysis = getAnalysisFromName(opts.analysis, &a);
+    if (analysis == nullptr) {
+        std::cerr << "This analysis has not yet been implemented.";
+        std::cerr << std::endl << std::endl;
+        std::cerr << qPrintable(parser.helpText());
+        return 1;
+    }
+
+    analysis->setThreads(opts.threads);
+    analysis->setTracePath(opts.tracePath);
+    analysis->setVerbose(opts.verbose);
+
+    QObject::connect(analysis, SIGNAL(finished()), &a, SLOT(quit()));
+
+    QTimer::singleShot(0, analysis, SLOT(execute()));
 
     return a.exec();
 }
