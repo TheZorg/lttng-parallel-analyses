@@ -15,10 +15,10 @@ CONFIG   -= app_bundle
 TEMPLATE = app
 
 
-SOURCES += main.cpp \
-    traceanalysis.cpp \
-    countanalysis.cpp
+SOURCES += src/main.cpp \
+    src/traceanalysis.cpp \
+    src/countanalysis.cpp
 
 HEADERS += \
-    traceanalysis.h \
-    countanalysis.h
+    src/traceanalysis.h \
+    src/countanalysis.h
