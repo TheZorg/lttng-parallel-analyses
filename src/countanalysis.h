@@ -13,4 +13,10 @@ protected:
     virtual void doExecute();
 };
 
+class CountWorker : public TraceWorker {
+public:
+    CountWorker(int id, QString path, bt_iter_pos begin, bt_iter_pos end, bool verbose = false) : TraceWorker(id, path, begin, end, verbose) {}
+    CountWorker(CountWorker &&other) : TraceWorker(std::move(other)) {}
+};
+
 #endif // COUNTANALYSIS_H

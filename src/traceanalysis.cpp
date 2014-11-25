@@ -40,4 +40,47 @@ void TraceAnalysis::execute()
 }
 
 
+TraceWrapper& TraceWorker::getWrapper()
+{
+    return wrapper;
+}
+const bt_iter_pos &TraceWorker::getBeginPos() const
+{
+    return beginPos;
+}
+
+void TraceWorker::setBeginPos(const bt_iter_pos &value)
+{
+    beginPos = value;
+}
+const bt_iter_pos &TraceWorker::getEndPos() const
+{
+    return endPos;
+}
+
+void TraceWorker::setEndPos(const bt_iter_pos &value)
+{
+    endPos = value;
+}
+bool TraceWorker::getVerbose() const
+{
+    return verbose;
+}
+
+void TraceWorker::setVerbose(bool value)
+{
+    verbose = value;
+}
+int TraceWorker::getId() const
+{
+    return id;
+}
+
+void TraceWorker::setId(int value)
+{
+    id = value;
+}
+
+
+
 

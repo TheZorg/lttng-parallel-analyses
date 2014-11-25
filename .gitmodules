@@ -1,0 +1,3 @@
+[submodule "contrib/babeltrace"]
+	path = contrib/babeltrace
+	url = https://github.com/TheZorg/babeltrace.git
