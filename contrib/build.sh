@@ -10,3 +10,8 @@ pushd babeltrace
 ./configure
 make
 popd
+
+pushd tigerbeetle
+./bootstrap.sh
+scons
+popd
