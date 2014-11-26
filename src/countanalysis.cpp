@@ -6,6 +6,8 @@
 
 #include <iostream>
 #include <iomanip>
+#include <locale>
+#include <sstream>
 
 extern "C" {
 #include <babeltrace/babeltrace.h>
@@ -73,9 +75,14 @@ void CountAnalysis::doExecute() {
 
     std::string line(80, '-');
 
+    // Format the count with thousand seperators
+    std::stringstream countss;
+    countss.imbue(std::locale(""));
+    countss << std::fixed << count;
+
     std::cout << line << std::endl;
-    std::cout << "Result of count analysis" << std::endl;
-    std::cout << std::setw(20) << std::left << "Number of events" << count << std::endl;
+    std::cout << "Result of count analysis" << std::endl << std::endl;
+    std::cout << std::setw(20) << std::left << "Number of events" << countss.str() << std::endl;
     std::cout << line << std::endl;
 }
 
