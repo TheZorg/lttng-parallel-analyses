@@ -112,3 +112,13 @@ void doSum(int &finalResult, const int &intermediate)
 {
     finalResult += intermediate;
 }
+
+CountWorker::CountWorker(int id, QString path, timestamp_t *begin, timestamp_t *end, bool verbose) :
+    TraceWorker(id, path, begin, end, verbose)
+{
+}
+
+CountWorker::CountWorker(CountWorker &&other) :
+    TraceWorker(std::move(other))
+{
+}

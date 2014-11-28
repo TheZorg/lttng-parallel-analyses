@@ -16,9 +16,8 @@ protected:
 
 class CountWorker : public TraceWorker {
 public:
-    CountWorker(int id, QString path, timestamp_t *begin, timestamp_t *end, bool verbose = false) : TraceWorker(id, path, begin, end, verbose) { }
-
-    CountWorker(CountWorker &&other) : TraceWorker(std::move(other)) { }
+    CountWorker(int id, QString path, timestamp_t *begin, timestamp_t *end, bool verbose = false);
+    CountWorker(CountWorker &&other);
 };
 
 #endif // COUNTANALYSIS_H

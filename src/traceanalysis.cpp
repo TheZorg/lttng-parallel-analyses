@@ -1,5 +1,7 @@
 #include "traceanalysis.h"
 
+#include <QTime>
+
 using namespace tibee;
 
 TraceAnalysis::TraceAnalysis(QObject *parent) :
@@ -37,13 +39,31 @@ void TraceAnalysis::setVerbose(bool value)
 
 void TraceAnalysis::execute()
 {
+    QTime timer;
+    if (doBenchmark) {
+        timer.start();
+    }
     if (isParallel) {
         doExecuteParallel();
     } else {
         doExecuteSerial();
     }
+    if (doBenchmark) {
+        int milliseconds = timer.elapsed();
+        std::cout << "Analysis time : " << milliseconds << "ms." << std::endl;
+    }
     emit finished();
 }
+bool TraceAnalysis::getDoBenchmark() const
+{
+    return doBenchmark;
+}
+
+void TraceAnalysis::setDoBenchmark(bool value)
+{
+    doBenchmark = value;
+}
+
 bool TraceAnalysis::getIsParallel() const
 {
     return isParallel;
@@ -60,18 +80,15 @@ TraceWorker::TraceWorker(int id, QString path, timestamp_t *begin, timestamp_t *
     id(id), beginPos(begin), endPos(end), verbose(verbose)
 {
     traceSet.addTrace(path.toStdString());
-    std::cout << "Constructing " << id << std::endl;
 }
 
 TraceWorker::~TraceWorker()
 {
-    std::cout << "Destroying " << id << std::endl;
 }
 
 TraceWorker::TraceWorker(TraceWorker &&other) : id(std::move(other.id)), traceSet(std::move(other.traceSet)),
     beginPos(std::move(other.beginPos)), endPos(std::move(other.endPos)), verbose(std::move(other.verbose))
 {
-    std::cout << "Moving " << id << std::endl;
 }
 
 TraceSet& TraceWorker::getTraceSet()

@@ -19,6 +19,7 @@ struct Options {
     QString analysisType;
     int threads;
     bool verbose;
+    bool benchmark;
     QString tracePath;
 };
 
@@ -32,6 +33,10 @@ CommandLineParseResult parseCommandLine(QCommandLineParser &parser, Options &opt
     // Verbose
     const QCommandLineOption verboseOption(QStringList() << "V" << "verbose", "Be verbose.");
     parser.addOption(verboseOption);
+
+    // Add timing benchmarks
+    const QCommandLineOption benchmarkOption(QStringList() << "b" << "benchmark", "Output benchmark times.");
+    parser.addOption(benchmarkOption);
 
     // Number of threads to use
     const QCommandLineOption threadOption(QStringList() << "t" << "thread", "Maximum number of threads to use.",
@@ -66,6 +71,10 @@ CommandLineParseResult parseCommandLine(QCommandLineParser &parser, Options &opt
 
     if (parser.isSet(verboseOption)) {
         opts.verbose = true;
+    }
+
+    if (parser.isSet(benchmarkOption)) {
+        opts.benchmark = true;
     }
 
     const QString threadsString = parser.value(threadOption);
@@ -158,6 +167,7 @@ int main(int argc, char *argv[]) {
     analysis->setThreads(opts.threads);
     analysis->setTracePath(opts.tracePath);
     analysis->setVerbose(opts.verbose);
+    analysis->setDoBenchmark(opts.benchmark);
     if (opts.analysisType == "parallel") {
         analysis->setIsParallel(true);
     } else if (opts.analysisType == "serial") {

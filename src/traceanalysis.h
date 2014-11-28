@@ -3,8 +3,6 @@
 
 #include "tracewrapper.h"
 
-#include <babeltrace/babeltrace.h>
-
 #include <base/BasicTypes.hpp>
 #include <trace/TraceSet.hpp>
 
@@ -31,6 +29,9 @@ public:
     bool getIsParallel() const;
     void setIsParallel(bool value);
 
+    bool getDoBenchmark() const;
+    void setDoBenchmark(bool value);
+
 signals:
     void finished();
 
@@ -45,6 +46,7 @@ protected:
     int threads;
     bool isParallel;
     QString tracePath;
+    bool doBenchmark;
     bool verbose;
 };
 

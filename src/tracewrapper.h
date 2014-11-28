@@ -13,13 +13,15 @@ struct bt_context;
 class TraceWrapper {
 public:
 
-    TraceWrapper(QString tracePath) : ctx(NULL), tracePath(tracePath) { }
+    TraceWrapper(QString tracePath);
 
     // Copying isn't allowed
     TraceWrapper(const TraceWrapper &other) = delete;
 
     // Moving is ok though (C++11)
-    TraceWrapper(TraceWrapper &&other) : ctx(std::move(other.ctx)), tracePath(std::move(other.tracePath)) { }
+    TraceWrapper(TraceWrapper &&other);
+
+    TraceWrapper &operator=(TraceWrapper &&other);
 
     ~TraceWrapper();
 
