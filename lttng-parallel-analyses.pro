@@ -19,12 +19,14 @@ TEMPLATE = app
 SOURCES += src/main.cpp \
     src/traceanalysis.cpp \
     src/countanalysis.cpp \
-    src/tracewrapper.cpp
+    src/tracewrapper.cpp \
+    src/cpuanalysis.cpp
 
 HEADERS += \
     src/traceanalysis.h \
     src/countanalysis.h \
-    src/tracewrapper.h
+    src/tracewrapper.h \
+    src/cpuanalysis.h
 
 QMAKE_LFLAGS += '-Wl,-rpath,\'$$PWD/contrib/babeltrace/lib/.libs\''
 QMAKE_LFLAGS += '-Wl,-rpath,\'$$PWD/contrib/babeltrace/formats/ctf/.libs\''
