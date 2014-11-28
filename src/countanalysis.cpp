@@ -69,17 +69,7 @@ void CountAnalysis::doExecuteParallel() {
 
     int count = countFuture.result();
 
-    std::string line(80, '-');
-
-    // Format the count with thousand seperators
-    std::stringstream countss;
-    countss.imbue(std::locale(""));
-    countss << std::fixed << count;
-
-    std::cout << line << std::endl;
-    std::cout << "Result of count analysis" << std::endl << std::endl;
-    std::cout << std::setw(20) << std::left << "Number of events" << countss.str() << std::endl;
-    std::cout << line << std::endl;
+    printCount(count);
 }
 
 int doCount(CountWorker &worker) {
@@ -105,7 +95,31 @@ int doCount(CountWorker &worker) {
 }
 
 void CountAnalysis::doExecuteSerial() {
-    std::cerr << "Not implemented." << std::endl;
+    TraceSet set;
+    set.addTrace(this->tracePath.toStdString());
+
+    int count = 0;
+    for (const auto &event : set) {
+        (void) event;
+        count++;
+    }
+
+    printCount(count);
+}
+
+void CountAnalysis::printCount(int count)
+{
+    std::string line(80, '-');
+
+    // Format the count with thousand seperators
+    std::stringstream countss;
+    countss.imbue(std::locale(""));
+    countss << std::fixed << count;
+
+    std::cout << line << std::endl;
+    std::cout << "Result of count analysis" << std::endl << std::endl;
+    std::cout << std::setw(20) << std::left << "Number of events" << countss.str() << std::endl;
+    std::cout << line << std::endl;
 }
 
 void doSum(int &finalResult, const int &intermediate)

@@ -12,6 +12,9 @@ public:
 protected:
     virtual void doExecuteParallel();
     virtual void doExecuteSerial();
+
+private:
+    void printCount(int count);
 };
 
 class CountWorker : public TraceWorker {
