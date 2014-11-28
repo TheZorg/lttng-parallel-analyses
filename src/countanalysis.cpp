@@ -8,64 +8,60 @@
 #include <iomanip>
 #include <locale>
 #include <sstream>
+#include <string>
 
-extern "C" {
-#include <babeltrace/babeltrace.h>
-#include <babeltrace/format.h>
-#include <babeltrace/context.h>
-#include <babeltrace/iterator.h>
-#include <babeltrace/ctf/events.h>
-#include <babeltrace/ctf/iterator.h>
-#include "babeltrace/ctf/types.h"
-}
+#include <trace/TraceSet.hpp>
+#include <base/BasicTypes.hpp>
+
+using namespace tibee;
+using namespace tibee::trace;
 
 static void doSum(int &finalResult, const int &intermediate);
 static int doCount(CountWorker &worker);
 
-void CountAnalysis::doExecute() {
-    bt_iter_pos positions[threads+1];
+void CountAnalysis::doExecuteParallel() {
+    timestamp_t positions[threads];
     std::vector<CountWorker> workers;
-    struct bt_iter_pos end_pos;
+    timestamp_t begin, end;
 
-    // Open a trace to get the begin/end timestamps
-    struct bt_context *ctx = bt_context_create();
-    int trace_id = bt_context_add_trace(ctx, tracePath.toStdString().c_str(), "ctf", NULL, NULL, NULL);
-    if(trace_id < 0)
     {
-        std::cerr << "Failed: bt_context_add_trace" << std::endl;
-        return;
+        // Open a trace to get the begin/end timestamps
+        TraceSet set;
+        set.addTrace(this->tracePath.toStdString());
+
+        // Get begin timestamp
+        begin = set.getBegin();
+
+        // Get end timestamp
+        end = set.getEnd();
+
+        // We don't need that context anymore, dispose of it
+        // Destructor
     }
-
-    end_pos.type = BT_SEEK_LAST;
-
-    // Get begin timestamp
-    struct bt_ctf_iter* iter = bt_ctf_iter_create(ctx, NULL, NULL);
-    struct bt_ctf_event *event = bt_ctf_iter_read_event(iter);
-    uint64_t begin = bt_ctf_get_timestamp(event);
-
-    // Get end timestamp
-    bt_iter_set_pos(bt_ctf_get_iter(iter), &end_pos);
-    event = bt_ctf_iter_read_event(iter);
-    uint64_t end = bt_ctf_get_timestamp(event);
-
-    // We don't need that context anymore, dispose of it
-    bt_context_put(ctx);
 
     // Calculate begin/end timestamp pairs for each chunk
-    uint64_t step = (end - begin)/threads;
+    timestamp_t step = (end - begin)/threads;
 
-    positions[0].type = BT_SEEK_BEGIN;
-    for (int i = 1; i < threads; i++)
+    for (int i = 0; i < threads; i++)
     {
-        positions[i].type = BT_SEEK_TIME;
-        positions[i].u.seek_time = begin + (i*step);
+        positions[i] = begin + (i*step);
     }
-    positions[threads].type = BT_SEEK_LAST;
 
     // Build the params list
     for (int i = 0; i < threads; i++)
     {
-        workers.push_back(CountWorker(i, tracePath, positions[i], positions[i+1], verbose));
+        timestamp_t *begin, *end;
+        if (i == 0) {
+            begin = nullptr;
+        } else {
+            begin = &positions[i];
+        }
+        if (i == threads - 1) {
+            end = nullptr;
+        } else {
+            end = &positions[i+1];
+        }
+        workers.emplace_back(i, tracePath, begin, end, verbose);
     }
 
     // Launch map reduce
@@ -87,29 +83,29 @@ void CountAnalysis::doExecute() {
 }
 
 int doCount(CountWorker &worker) {
-    TraceWrapper &wrapper = worker.getWrapper();
-    bt_context *ctx = wrapper.getContext();
+    TraceSet &traceSet = worker.getTraceSet();
+    TraceSet::Iterator iter = traceSet.between(worker.getBeginPos(), worker.getEndPos());
+    TraceSet::Iterator endIter = traceSet.end();
 
-    const bt_iter_pos *begin = &worker.getBeginPos();
-    const bt_iter_pos *end = &worker.getEndPos();
-    bt_ctf_iter *iter = bt_ctf_iter_create(ctx, begin, end);
-
-    bt_ctf_event *ctf_event;
     int count = 0;
-    while((ctf_event = bt_ctf_iter_read_event(iter))) {
+    for ((void)iter; iter != endIter; ++iter) {
         count++;
-        bt_iter_next(bt_ctf_get_iter(iter));
     }
 
-    bt_ctf_iter_destroy(iter);
-    bt_context_put(ctx);
-
     if (worker.getVerbose()) {
+        const timestamp_t *begin = worker.getBeginPos();
+        const timestamp_t *end = worker.getEndPos();
+        std::string beginString = begin ? std::to_string(*begin) : "START";
+        std::string endString = end ? std::to_string(*end) : "END";
         std::cout << "Worker " << worker.getId() << " counted " << count << " events between timestamps "
-                  << worker.getBeginPos().u.seek_time << " and " << worker.getEndPos().u.seek_time << std::endl;
+                  << beginString << " and " << endString << std::endl;
     }
 
     return count;
+}
+
+void CountAnalysis::doExecuteSerial() {
+    std::cerr << "Not implemented." << std::endl;
 }
 
 void doSum(int &finalResult, const int &intermediate)

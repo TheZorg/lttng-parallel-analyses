@@ -11,6 +11,7 @@ QT       -= gui
 TARGET = lttng-parallel-analyses
 CONFIG   += console
 CONFIG   -= app_bundle
+CONFIG += debug
 
 TEMPLATE = app
 
@@ -41,12 +42,14 @@ LIBS += -L$$PWD/contrib/babeltrace/lib/.libs/ -lbabeltrace
 LIBS += -L$$PWD/contrib/babeltrace/formats/ctf/.libs/ -lbabeltrace-ctf
 LIBS += -L$$PWD/contrib/tigerbeetle/src/ -ltigerbeetle
 LIBS += -lglib-2.0
+LIBS += -lboost_filesystem -lboost_system
 
 INCLUDEPATH += /usr/include/glib-2.0/ /usr/lib/x86_64-linux-gnu/glib-2.0/include/
 
 QMAKE_CXXFLAGS += -isystem$$PWD/contrib/babeltrace/include
 DEPENDPATH += $$PWD/contrib/babeltrace/include
 
+QMAKE_CXXFLAGS += -isystem$$PWD/contrib/tigerbeetle/src
 INCLUDEPATH += $$PWD/contrib/tigerbeetle/src
 DEPENDPATH += $$PWD/contrib/tigerbeetle/src
 

@@ -1,5 +1,7 @@
 #include "traceanalysis.h"
 
+using namespace tibee;
+
 TraceAnalysis::TraceAnalysis(QObject *parent) :
     QObject(parent)
 {
@@ -35,30 +37,62 @@ void TraceAnalysis::setVerbose(bool value)
 
 void TraceAnalysis::execute()
 {
-    doExecute();
+    if (isParallel) {
+        doExecuteParallel();
+    } else {
+        doExecuteSerial();
+    }
     emit finished();
 }
-
-
-TraceWrapper& TraceWorker::getWrapper()
+bool TraceAnalysis::getIsParallel() const
 {
-    return wrapper;
+    return isParallel;
 }
-const bt_iter_pos &TraceWorker::getBeginPos() const
+
+void TraceAnalysis::setIsParallel(bool value)
+{
+    isParallel = value;
+}
+
+
+
+TraceWorker::TraceWorker(int id, QString path, timestamp_t *begin, timestamp_t *end, bool verbose) :
+    id(id), beginPos(begin), endPos(end), verbose(verbose)
+{
+    traceSet.addTrace(path.toStdString());
+    std::cout << "Constructing " << id << std::endl;
+}
+
+TraceWorker::~TraceWorker()
+{
+    std::cout << "Destroying " << id << std::endl;
+}
+
+TraceWorker::TraceWorker(TraceWorker &&other) : id(std::move(other.id)), traceSet(std::move(other.traceSet)),
+    beginPos(std::move(other.beginPos)), endPos(std::move(other.endPos)), verbose(std::move(other.verbose))
+{
+    std::cout << "Moving " << id << std::endl;
+}
+
+TraceSet& TraceWorker::getTraceSet()
+{
+    return traceSet;
+}
+const timestamp_t *TraceWorker::getBeginPos() const
 {
     return beginPos;
 }
 
-void TraceWorker::setBeginPos(const bt_iter_pos &value)
+void TraceWorker::setBeginPos(const timestamp_t *value)
 {
     beginPos = value;
 }
-const bt_iter_pos &TraceWorker::getEndPos() const
+const timestamp_t *TraceWorker::getEndPos() const
 {
     return endPos;
 }
 
-void TraceWorker::setEndPos(const bt_iter_pos &value)
+void TraceWorker::setEndPos(const timestamp_t *value)
 {
     endPos = value;
 }

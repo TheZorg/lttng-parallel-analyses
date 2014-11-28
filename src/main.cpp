@@ -15,13 +15,15 @@ enum class CommandLineParseResult {
 };
 
 struct Options {
-    QString analysis;
+    QString analysisName;
+    QString analysisType;
     int threads;
     bool verbose;
     QString tracePath;
 };
 
 QStringList analysisList = QStringList() << "count" << "cpu" << "io";
+QStringList typeList = QStringList() << "serial" << "parallel";
 
 CommandLineParseResult parseCommandLine(QCommandLineParser &parser, Options &opts, QString *errorMessage) {
     const QCommandLineOption helpOption = parser.addHelpOption();
@@ -37,9 +39,14 @@ CommandLineParseResult parseCommandLine(QCommandLineParser &parser, Options &opt
     parser.addOption(threadOption);
 
     // Analysis name
-    const QCommandLineOption analysisOption(QStringList() << "a" << "analysis", "Type of analysis to execute [ count | cpu | io ].",
+    const QCommandLineOption analysisOption(QStringList() << "a" << "analysis", "Name of analysis to execute [ count | cpu | io ].",
                                             "analysis name", "count");
     parser.addOption(analysisOption);
+
+    // Analysis type (serial vs parallel)
+    const QCommandLineOption typeOption(QStringList() << "T" << "type", "Type of analysis to execute [ serial | parallel ].",
+                                            "analysis type", "parallel");
+    parser.addOption(typeOption);
 
     // Trace directory is a positional argument (i.e. no option)
     parser.addPositionalArgument("<path/to/trace>", "Trace path.");
@@ -71,10 +78,17 @@ CommandLineParseResult parseCommandLine(QCommandLineParser &parser, Options &opt
 
     const QString analysisString = parser.value(analysisOption);
     if (!analysisList.contains(analysisString)) {
-        *errorMessage = "Invalid analysis.";
+        *errorMessage = "Invalid analysis name.";
         return CommandLineParseResult::Error;
     }
-    opts.analysis = analysisString;
+    opts.analysisName = analysisString;
+
+    const QString typeString = parser.value(typeOption);
+    if (!typeList.contains(typeString)) {
+        *errorMessage = "Invalid analysis type.";
+        return CommandLineParseResult::Error;
+    }
+    opts.analysisType = typeString;
 
     const QStringList positionalArguments = parser.positionalArguments();
     if (positionalArguments.isEmpty()) {
@@ -129,11 +143,11 @@ int main(int argc, char *argv[]) {
     if (opts.verbose) {
         std::cout << "Opts : " << std::endl;
         std::cout << "--thread : " << opts.threads << std::endl;
-        std::cout << "--analysis : " << qPrintable(opts.analysis) << std::endl;
+        std::cout << "--analysis : " << qPrintable(opts.analysisName) << std::endl;
         std::cout << "<path/to/trace> : " << qPrintable(opts.tracePath) << std::endl;
     }
 
-    TraceAnalysis *analysis = getAnalysisFromName(opts.analysis, &a);
+    TraceAnalysis *analysis = getAnalysisFromName(opts.analysisName, &a);
     if (analysis == nullptr) {
         std::cerr << "This analysis has not yet been implemented.";
         std::cerr << std::endl << std::endl;
@@ -144,6 +158,11 @@ int main(int argc, char *argv[]) {
     analysis->setThreads(opts.threads);
     analysis->setTracePath(opts.tracePath);
     analysis->setVerbose(opts.verbose);
+    if (opts.analysisType == "parallel") {
+        analysis->setIsParallel(true);
+    } else if (opts.analysisType == "serial") {
+        analysis->setIsParallel(false);
+    }
 
     QObject::connect(analysis, SIGNAL(finished()), &a, SLOT(quit()));
 

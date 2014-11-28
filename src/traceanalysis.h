@@ -5,7 +5,13 @@
 
 #include <babeltrace/babeltrace.h>
 
+#include <base/BasicTypes.hpp>
+#include <trace/TraceSet.hpp>
+
 #include <QObject>
+
+using namespace tibee;
+using namespace tibee::trace;
 
 class TraceAnalysis : public QObject
 {
@@ -22,6 +28,9 @@ public:
     bool getVerbose() const;
     void setVerbose(bool value);
 
+    bool getIsParallel() const;
+    void setIsParallel(bool value);
+
 signals:
     void finished();
 
@@ -29,37 +38,39 @@ public slots:
     void execute();
 
 protected:
-    virtual void doExecute() = 0;
+    virtual void doExecuteParallel() = 0;
+    virtual void doExecuteSerial() = 0;
 
 protected:
     int threads;
+    bool isParallel;
     QString tracePath;
     bool verbose;
 };
 
 class TraceWorker {
 public:
-    TraceWorker(int id, QString path, bt_iter_pos begin, bt_iter_pos end, bool verbose = false) :
-        id(id), wrapper(path), beginPos(begin), endPos(end), verbose(verbose) {}
+    TraceWorker(int id, QString path, timestamp_t *begin, timestamp_t *end, bool verbose = false);
 
     // Don't allow copying
     TraceWorker(const TraceWorker &other) = delete;
     TraceWorker& operator=(const TraceWorker &other) & = delete;
 
+    virtual ~TraceWorker();
+
 
     // Moving is fine (C++11)
-    TraceWorker(TraceWorker &&other) = default;
-//    TraceWorker(TraceWorker &&other) : id(std::move(id)), wrapper(std::move(other.wrapper)),
-//        beginPos(std::move(other.beginPos)), endPos(std::move(other.endPos)), verbose(std::move(verbose)) {}
+//    TraceWorker(TraceWorker &&other) = default;
+    TraceWorker(TraceWorker &&other);
 
     // Accessors
-    TraceWrapper &getWrapper();
+    TraceSet &getTraceSet();
 
-    const bt_iter_pos &getBeginPos() const;
-    void setBeginPos(const bt_iter_pos &value);
+    const timestamp_t *getBeginPos() const;
+    void setBeginPos(const timestamp_t *value);
 
-    const bt_iter_pos &getEndPos() const;
-    void setEndPos(const bt_iter_pos &value);
+    const timestamp_t *getEndPos() const;
+    void setEndPos(const timestamp_t *value);
 
     bool getVerbose() const;
     void setVerbose(bool value);
@@ -69,9 +80,9 @@ public:
 
 protected:
     int id;
-    TraceWrapper wrapper;
-    bt_iter_pos beginPos;
-    bt_iter_pos endPos;
+    TraceSet traceSet;
+    const timestamp_t *beginPos;
+    const timestamp_t *endPos;
     bool verbose;
 };
 
