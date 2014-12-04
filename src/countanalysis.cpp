@@ -24,20 +24,15 @@ void CountAnalysis::doExecuteParallel() {
     std::vector<CountWorker> workers;
     timestamp_t begin, end;
 
-    {
-        // Open a trace to get the begin/end timestamps
-        TraceSet set;
-        set.addTrace(this->tracePath.toStdString());
+    // Open a trace to get the begin/end timestamps
+    TraceSet set;
+    set.addTrace(this->tracePath.toStdString());
 
-        // Get begin timestamp
-        begin = set.getBegin();
+    // Get begin timestamp
+    begin = set.getBegin();
 
-        // Get end timestamp
-        end = set.getEnd();
-
-        // We don't need that context anymore, dispose of it
-        // Destructor
-    }
+    // Get end timestamp
+    end = set.getEnd();
 
     // Calculate begin/end timestamp pairs for each chunk
     timestamp_t step = (end - begin)/threads;
@@ -61,7 +56,7 @@ void CountAnalysis::doExecuteParallel() {
         } else {
             end = &positions[i+1];
         }
-        workers.emplace_back(i, tracePath, begin, end, verbose);
+        workers.emplace_back(i, set, begin, end, verbose);
     }
 
     // Launch map reduce
@@ -127,8 +122,8 @@ void doSum(int &finalResult, const int &intermediate)
     finalResult += intermediate;
 }
 
-CountWorker::CountWorker(int id, QString path, timestamp_t *begin, timestamp_t *end, bool verbose) :
-    TraceWorker(id, path, begin, end, verbose)
+CountWorker::CountWorker(int id, TraceSet &set, timestamp_t *begin, timestamp_t *end, bool verbose) :
+    TraceWorker(id, set, begin, end, verbose)
 {
 }
 

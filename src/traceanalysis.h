@@ -52,7 +52,7 @@ protected:
 
 class TraceWorker {
 public:
-    TraceWorker(int id, QString path, timestamp_t *begin, timestamp_t *end, bool verbose = false);
+    TraceWorker(int id, TraceSet &set, timestamp_t *begin, timestamp_t *end, bool verbose = false);
 
     // Don't allow copying
     TraceWorker(const TraceWorker &other) = delete;
@@ -82,7 +82,7 @@ public:
 
 protected:
     int id;
-    TraceSet traceSet;
+    TraceSet &traceSet;
     const timestamp_t *beginPos;
     const timestamp_t *endPos;
     bool verbose;

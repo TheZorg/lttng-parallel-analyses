@@ -76,17 +76,16 @@ void TraceAnalysis::setIsParallel(bool value)
 
 
 
-TraceWorker::TraceWorker(int id, QString path, timestamp_t *begin, timestamp_t *end, bool verbose) :
-    id(id), beginPos(begin), endPos(end), verbose(verbose)
+TraceWorker::TraceWorker(int id, TraceSet &set, timestamp_t *begin, timestamp_t *end, bool verbose) :
+    id(id), traceSet(set), beginPos(begin), endPos(end), verbose(verbose)
 {
-    traceSet.addTrace(path.toStdString());
 }
 
 TraceWorker::~TraceWorker()
 {
 }
 
-TraceWorker::TraceWorker(TraceWorker &&other) : id(std::move(other.id)), traceSet(std::move(other.traceSet)),
+TraceWorker::TraceWorker(TraceWorker &&other) : id(std::move(other.id)), traceSet(other.traceSet),
     beginPos(std::move(other.beginPos)), endPos(std::move(other.endPos)), verbose(std::move(other.verbose))
 {
 }

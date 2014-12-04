@@ -29,8 +29,8 @@ HEADERS += \
     src/tracewrapper.h \
     src/cpuanalysis.h
 
-QMAKE_LFLAGS += '-Wl,-rpath,\'$$PWD/contrib/babeltrace/lib/.libs\''
-QMAKE_LFLAGS += '-Wl,-rpath,\'$$PWD/contrib/babeltrace/formats/ctf/.libs\''
+QMAKE_LFLAGS += '-Wl,-rpath,\'$$PWD/contrib/tigerbeetle/contrib/babeltrace/lib/.libs\''
+QMAKE_LFLAGS += '-Wl,-rpath,\'$$PWD/contrib/tigerbeetle/contrib/babeltrace/formats/ctf/.libs\''
 QMAKE_LFLAGS += '-Wl,-rpath,\'$$PWD/contrib/tigerbeetle/src/\''
 
 # BUG in ld : https://sourceware.org/bugzilla/show_bug.cgi?id=16936

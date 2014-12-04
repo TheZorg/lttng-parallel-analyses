@@ -19,7 +19,7 @@ private:
 
 class CountWorker : public TraceWorker {
 public:
-    CountWorker(int id, QString path, timestamp_t *begin, timestamp_t *end, bool verbose = false);
+    CountWorker(int id, TraceSet &set, timestamp_t *begin, timestamp_t *end, bool verbose = false);
     CountWorker(CountWorker &&other);
 };
 
