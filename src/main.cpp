@@ -15,12 +15,12 @@ enum class CommandLineParseResult {
 };
 
 struct Options {
-    QString analysisName;
-    QString analysisType;
-    int threads;
-    bool verbose;
-    bool benchmark;
-    QString tracePath;
+    QString analysisName = "";
+    QString analysisType = "";
+    int threads = 1;
+    bool verbose = false;
+    bool benchmark = false;
+    QString tracePath = "";
 };
 
 QStringList analysisList = QStringList() << "count" << "cpu" << "io";
