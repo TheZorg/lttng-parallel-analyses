@@ -3,4 +3,4 @@
 	url = https://github.com/TheZorg/babeltrace.git
 [submodule "contrib/tigerbeetle"]
 	path = contrib/tigerbeetle
-	url = git@github.com:TheZorg/tigerbeetle.git
+	url = https://github.com/TheZorg/tigerbeetle.git
