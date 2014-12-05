@@ -19,7 +19,7 @@
 #ifndef COUNTANALYSIS_H
 #define COUNTANALYSIS_H
 
-#include "traceanalysis.h"
+#include "common/traceanalysis.h"
 
 class CountAnalysis : public TraceAnalysis
 {

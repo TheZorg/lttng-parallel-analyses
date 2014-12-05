@@ -16,8 +16,9 @@
  * along with lttng-parallel-analyses.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "traceanalysis.h"
-#include "countanalysis.h"
+#include "common/traceanalysis.h"
+#include "count/countanalysis.h"
+#include "cpu/cpuanalysis.h"
 
 #include <QCoreApplication>
 #include <QCommandLineParser>

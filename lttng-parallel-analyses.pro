@@ -18,16 +18,16 @@ TEMPLATE = app
 
 
 SOURCES += src/main.cpp \
-    src/traceanalysis.cpp \
-    src/countanalysis.cpp \
-    src/tracewrapper.cpp \
-    src/cpuanalysis.cpp
+    src/count/countanalysis.cpp \
+    src/common/traceanalysis.cpp \
+    src/common/tracewrapper.cpp \
+    src/cpu/cpuanalysis.cpp
 
 HEADERS += \
-    src/traceanalysis.h \
-    src/countanalysis.h \
-    src/tracewrapper.h \
-    src/cpuanalysis.h
+    src/count/countanalysis.h \
+    src/common/traceanalysis.h \
+    src/common/tracewrapper.h \
+    src/cpu/cpuanalysis.h
 
 QMAKE_LFLAGS += '-Wl,-rpath,\'$$PWD/contrib/tigerbeetle/contrib/babeltrace/lib/.libs\''
 QMAKE_LFLAGS += '-Wl,-rpath,\'$$PWD/contrib/tigerbeetle/contrib/babeltrace/formats/ctf/.libs\''
@@ -54,4 +54,6 @@ DEPENDPATH += $$PWD/contrib/babeltrace/include
 QMAKE_CXXFLAGS += -isystem$$PWD/contrib/tigerbeetle/src
 INCLUDEPATH += $$PWD/contrib/tigerbeetle/src
 DEPENDPATH += $$PWD/contrib/tigerbeetle/src
+INCLUDEPATH += $$PWD/src
+DEPENDPATH += $$PWD/src
 
