@@ -60,9 +60,6 @@ void IoContext::handleExitSyscall(const tibee::trace::EventValue &event)
             uint64_t latency = timestamp - p.currentSyscall->start;
             switch (p.currentSyscall->type) {
             case IOType::READ:
-                if (tid == 13360) {
-                    std::cout << "ding" << std::endl;
-                }
                 p.totalReadLatency += latency;
                 p.readBytes += ret;
                 p.readCount++;
@@ -99,6 +96,51 @@ void IoContext::handleEnd()
 {
     QList<IoProcess> l = tids.values();
     sortedTids = l.toStdList();
+}
+
+void IoContext::merge(const IoContext &other)
+{
+    for (const IoProcess &process : other.tids.values()) {
+        if (tids.contains(process.tid)) {
+            IoProcess &thisTid = tids[process.tid];
+
+            thisTid.totalReadLatency += process.totalReadLatency;
+            thisTid.totalWriteLatency += process.totalWriteLatency;
+
+            thisTid.readBytes += process.readBytes;
+            thisTid.writeBytes += process.writeBytes;
+
+            thisTid.readCount += process.readCount;
+            thisTid.writeCount += process.writeCount;
+
+            if (thisTid.currentSyscall) {
+                // We have an unfinished syscall
+                if (process.unknownSyscall) {
+                    // We need to check, in case we are at the end of the trace
+                    uint64_t latency = process.unknownSyscall->end - thisTid.currentSyscall->start;
+                    if (thisTid.currentSyscall->type == IOType::READ) {
+                        int64_t ret = process.unknownSyscall->ret;
+                        if (ret >= 0) {
+                            thisTid.totalReadLatency += latency;
+                            thisTid.readBytes += ret;
+                            thisTid.readCount++;
+                        }
+                    }
+                    if (thisTid.currentSyscall->type == IOType::WRITE) {
+                        int64_t ret = process.unknownSyscall->ret;
+                        if (ret >= 0) {
+                            thisTid.totalWriteLatency += latency;
+                            thisTid.writeBytes += ret;
+                            thisTid.writeCount++;
+                        }
+                    }
+                }
+            }
+            thisTid.currentSyscall = process.currentSyscall;
+        } else {
+            tids[process.tid] = process;
+        }
+    }
 }
 
 void IoContext::handleReadWrite(const tibee::trace::EventValue &event, IOType type)

@@ -36,4 +36,17 @@ private:
     void printResults(IoContext &data);
 };
 
+class IoWorker : public TraceWorker
+{
+public:
+
+    IoWorker(int id, TraceSet &set, timestamp_t *begin, timestamp_t *end, bool verbose = false);
+    IoWorker(IoWorker &&other);
+
+    IoContext &getData();
+
+private:
+    IoContext data;
+};
+
 #endif // IOANALYSIS_H

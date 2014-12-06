@@ -63,6 +63,8 @@ public:
     void handleExitSyscall(const tibee::trace::EventValue &event);
     void handleEnd();
 
+    void merge(const IoContext &other);
+
     const std::list<IoProcess> &getTidsByWrite();
     const std::list<IoProcess> &getTidsByRead();
 
