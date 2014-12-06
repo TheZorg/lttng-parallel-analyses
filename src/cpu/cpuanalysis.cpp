@@ -18,6 +18,7 @@
 
 #include "cpuanalysis.h"
 #include "cpucontext.h"
+#include "common/utils.h"
 
 #include <iostream>
 #include <iomanip>
@@ -36,21 +37,6 @@
 
 CpuContext doMap(CpuWorker &worker);
 void doReduce(CpuContext &final, const CpuContext &intermediate);
-
-event_id_t getEventId(TraceSet &set, std::string eventName)
-{
-    auto &tracesInfos = set.getTracesInfos();
-    for (const auto &traceInfos : tracesInfos) {
-        if (traceInfos->getTraceType() == "lttng-kernel") {
-            for (const auto &eventNameIdPair : *traceInfos->getEventMap()) {
-                if (eventNameIdPair.first == eventName) {
-                    return eventNameIdPair.second->getId();
-                }
-            }
-        }
-    }
-    return -1;
-}
 
 void CpuAnalysis::doExecuteParallel()
 {
@@ -180,7 +166,7 @@ void CpuAnalysis::printResults(CpuContext &data)
     std::string line(80, '-');
 
     std::cout << line << std::endl;
-    std::cout << "Result of count analysis" << std::endl << std::endl;
+    std::cout << "Result of cpu analysis" << std::endl << std::endl;
     std::cout << std::setw(20) << std::left << "CPU" << "Percentage time" << std::endl;
 
     // Print out CPU

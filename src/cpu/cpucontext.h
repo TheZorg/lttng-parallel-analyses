@@ -37,7 +37,6 @@ struct Process
     int tid = UNKNOWN_TID;
     uint64_t cpu_ns = 0;
     std::string comm = "";
-    uint64_t last_sched = 0;
 };
 
 struct Cpu

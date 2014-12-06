@@ -22,14 +22,20 @@ SOURCES += src/main.cpp \
     src/common/traceanalysis.cpp \
     src/common/tracewrapper.cpp \
     src/cpu/cpuanalysis.cpp \
-    src/cpu/cpucontext.cpp
+    src/cpu/cpucontext.cpp \
+    src/io/ioanalysis.cpp \
+    src/io/iocontext.cpp \
+    src/common/utils.cpp
 
 HEADERS += \
     src/count/countanalysis.h \
     src/common/traceanalysis.h \
     src/common/tracewrapper.h \
     src/cpu/cpuanalysis.h \
-    src/cpu/cpucontext.h
+    src/cpu/cpucontext.h \
+    src/io/ioanalysis.h \
+    src/io/iocontext.h \
+    src/common/utils.h
 
 QMAKE_LFLAGS += '-Wl,-rpath,\'$$PWD/contrib/tigerbeetle/contrib/babeltrace/lib/.libs\''
 QMAKE_LFLAGS += '-Wl,-rpath,\'$$PWD/contrib/tigerbeetle/contrib/babeltrace/formats/ctf/.libs\''

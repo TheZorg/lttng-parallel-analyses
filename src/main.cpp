@@ -19,6 +19,7 @@
 #include "common/traceanalysis.h"
 #include "count/countanalysis.h"
 #include "cpu/cpuanalysis.h"
+#include "io/ioanalysis.h"
 
 #include <QCoreApplication>
 #include <QCommandLineParser>
@@ -137,6 +138,8 @@ TraceAnalysis* getAnalysisFromName(QString analysisName, QCoreApplication *app) 
         return new CountAnalysis(app);
     } else if (analysisName == "cpu") {
         return new CpuAnalysis(app);
+    } else if (analysisName == "io") {
+        return new IoAnalysis(app);
     }
     return nullptr;
 }

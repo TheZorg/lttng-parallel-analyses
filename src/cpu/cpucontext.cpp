@@ -31,8 +31,6 @@ void CpuContext::handleSchedSwitch(const tibee::trace::EventValue &event)
     int prev_pid = event.getFields()->GetField("prev_tid")->AsInteger();
     int next_pid = event.getFields()->GetField("next_tid")->AsInteger();
     std::string prev_comm = event.getFields()->GetField("prev_comm")->AsString();
-    std::string next_comm = event.getFields()->GetField("next_comm")->AsString();
-
 
     // Calculate CPU time
     Cpu &c = getCpu(cpu);
@@ -41,10 +39,10 @@ void CpuContext::handleSchedSwitch(const tibee::trace::EventValue &event)
         c.cpu_ns += timestamp - c.currentTask->start;
     } else if (prev_pid != 0) {
         // We had an unknown running task, assume since beginning of trace
-                c.cpu_ns += timestamp - start;
-                c.currentTask = Task();
-                c.currentTask->start = start;
-                c.currentTask->end = timestamp;
+        c.cpu_ns += timestamp - start;
+        c.currentTask = Task();
+        c.currentTask->start = start;
+        c.currentTask->end = timestamp;
     }
 
     // Calculate PID time
