@@ -135,6 +135,8 @@ CommandLineParseResult parseCommandLine(QCommandLineParser &parser, Options &opt
 TraceAnalysis* getAnalysisFromName(QString analysisName, QCoreApplication *app) {
     if (analysisName == "count") {
         return new CountAnalysis(app);
+    } else if (analysisName == "cpu") {
+        return new CpuAnalysis(app);
     }
     return nullptr;
 }
