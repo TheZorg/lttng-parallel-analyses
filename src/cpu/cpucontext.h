@@ -55,6 +55,8 @@ public:
     void handleSchedSwitch(const tibee::trace::EventValue &event);
     void handleEnd();
 
+    void merge(const CpuContext &other);
+
     uint64_t getStart() const;
     void setStart(const uint64_t &value);
 

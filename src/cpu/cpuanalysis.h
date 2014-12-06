@@ -33,13 +33,20 @@ protected:
     virtual void doExecuteSerial();
 
 private:
-    event_id_t getEventId(TraceSet &set, std::string eventName);
     void printResults(CpuContext &data);
 };
 
 class CpuWorker : public TraceWorker
 {
+public:
 
+    CpuWorker(int id, TraceSet &set, timestamp_t *begin, timestamp_t *end, bool verbose = false);
+    CpuWorker(CpuWorker &&other);
+
+    CpuContext &getData();
+
+private:
+    CpuContext data;
 };
 
 #endif // CPUANALYSIS_H

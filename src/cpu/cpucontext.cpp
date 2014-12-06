@@ -41,10 +41,10 @@ void CpuContext::handleSchedSwitch(const tibee::trace::EventValue &event)
         c.cpu_ns += timestamp - c.currentTask->start;
     } else if (prev_pid != 0) {
         // We had an unknown running task, assume since beginning of trace
-//                c.cpu_ns += timestamp - start;
-//                c.currentTask = Task();
-//                c.currentTask->start = start;
-//                c.currentTask->end = timestamp;
+                c.cpu_ns += timestamp - start;
+                c.currentTask = Task();
+                c.currentTask->start = start;
+                c.currentTask->end = timestamp;
     }
 
     // Calculate PID time
@@ -82,6 +82,7 @@ void CpuContext::handleEnd()
         if (cpu.currentTask) {
             cpu.cpu_ns += end - cpu.currentTask->start;
             tids[cpu.currentTask->tid].cpu_ns += end - cpu.currentTask->start;
+            cpu.currentTask = boost::none;
         }
     }
 
@@ -97,6 +98,38 @@ void CpuContext::handleEnd()
         return a.cpu_ns > b.cpu_ns;
     });
 }
+
+void CpuContext::merge(const CpuContext &other)
+{
+    // Fix start/end times
+    if (other.start < start || start == 0) {
+        start = other.start;
+    }
+    if (other.end > end) {
+        end = other.end;
+    }
+
+    // Merge CPUs
+    for (const Cpu &otherCpu : other.cpus) {
+        Cpu &cpu = getCpu(otherCpu.id);
+        cpu.cpu_ns += otherCpu.cpu_ns;
+    }
+
+    // Merge TIDs
+    QHashIterator<int, Process> otherTidsIter(other.tids);
+    while (otherTidsIter.hasNext()) {
+        otherTidsIter.next();
+        const int &tid = otherTidsIter.key();
+        const Process &otherTid = otherTidsIter.value();
+        if (tids.contains(tid)) {
+            Process &thisTid = tids[tid];
+            thisTid.cpu_ns += otherTid.cpu_ns;
+        } else {
+            tids[tid] = otherTid;
+        }
+    }
+}
+
 uint64_t CpuContext::getStart() const
 {
     return start;
