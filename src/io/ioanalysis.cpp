@@ -25,9 +25,24 @@
 #include <iostream>
 #include <iomanip>
 #include <sstream>
+#include <vector>
 
 IoContext doMap(IoWorker &worker);
 void doReduce(IoContext &final, const IoContext &intermediate);
+
+std::vector<std::string> readSyscalls = {"sys_read", "syscall_entry_read",
+                              "sys_recvmsg", "syscall_entry_recvmsg",
+                              "sys_recvfrom", "syscall_entry_recvfrom",
+                              "sys_readv", "syscall_entry_readv"};
+
+std::vector<std::string> writeSyscalls = {"sys_write", "syscall_entry_write",
+                               "sys_sendmsg", "syscall_entry_sendmsg",
+                               "sys_sendto", "syscall_entry_sendto",
+                               "sys_writev", "syscall_entry_writev"};
+
+std::vector<std::string> readWriteSyscalls = {"sys_splice", "syscall_entry_splice",
+                                              "sys_sendfile64", "syscall_entry_sendfile64"};
+
 
 void IoAnalysis::doExecuteParallel()
 {
@@ -83,32 +98,42 @@ void IoAnalysis::doExecuteParallel()
 
 IoContext doMap(IoWorker &worker)
 {
-    TraceSet &traceSet = worker.getTraceSet();
-    TraceSet::Iterator iter = traceSet.between(worker.getBeginPos(), worker.getEndPos());
-    TraceSet::Iterator endIter = traceSet.end();
+    TraceSet &set = worker.getTraceSet();
+    TraceSet::Iterator iter = set.between(worker.getBeginPos(), worker.getEndPos());
+    TraceSet::Iterator endIter = set.end();
 
     IoContext &data = worker.getData();
 
     // Get event ids
-    event_id_t sysReadId = getEventId(traceSet, "sys_read");
-    event_id_t sysReadVId = getEventId(traceSet, "sys_readv");
-    event_id_t sysWriteId = getEventId(traceSet, "sys_write");
-    event_id_t sysWriteVId = getEventId(traceSet, "sys_writev");
-    event_id_t exitSyscallId = getEventId(traceSet, "exit_syscall");
-
-    if (!sysReadId | !sysReadVId | !sysWriteId | !sysWriteVId | !exitSyscallId) {
-        std::cerr << "The trace is missing events." << std::endl;
-        return data;
+    // Get event ids
+    std::set<event_id_t> readEventIds {};
+    for (const std::string &eventName : readSyscalls) {
+        event_id_t id = getEventId(set, eventName);
+        readEventIds.insert(id);
     }
+    std::set<event_id_t> writeEventIds {};
+    for (const std::string &eventName : writeSyscalls) {
+        event_id_t id = getEventId(set, eventName);
+        writeEventIds.insert(id);
+    }
+    std::set<event_id_t> readWriteEventIds {};
+    for (const std::string &eventName : readWriteSyscalls) {
+        event_id_t id = getEventId(set, eventName);
+        readWriteEventIds.insert(id);
+    }
+
+    event_id_t exitSyscallId = getEventId(set, "exit_syscall");
 
     // Iterate through events
     for ((void)iter; iter != endIter; ++iter) {
         const auto &event = *iter;
         event_id_t id = event.getId();
-        if (id == sysReadId || id == sysReadVId) {
+        if (readEventIds.find(id) != readEventIds.end()) {
             data.handleSysRead(event);
-        } else if (id == sysWriteId || id == sysWriteVId) {
+        } else if (writeEventIds.find(id) != writeEventIds.end()) {
             data.handleSysWrite(event);
+        } else if (readWriteEventIds.find(id) != readWriteEventIds.end()) {
+            data.handleSysReadWrite(event);
         } else if (id == exitSyscallId) {
             data.handleExitSyscall(event);
         }
@@ -132,24 +157,33 @@ void IoAnalysis::doExecuteSerial()
     IoContext data;
 
     // Get event ids
-    event_id_t sysReadId = getEventId(set, "sys_read");
-    event_id_t sysReadVId = getEventId(set, "sys_readv");
-    event_id_t sysWriteId = getEventId(set, "sys_write");
-    event_id_t sysWriteVId = getEventId(set, "sys_writev");
-    event_id_t exitSyscallId = getEventId(set, "exit_syscall");
-
-    if (!sysReadId | !sysReadVId | !sysWriteId | !sysWriteVId | !exitSyscallId) {
-        std::cerr << "The trace is missing events." << std::endl;
-        return;
+    std::set<event_id_t> readEventIds {};
+    for (const std::string &eventName : readSyscalls) {
+        event_id_t id = getEventId(set, eventName);
+        readEventIds.insert(id);
     }
+    std::set<event_id_t> writeEventIds {};
+    for (const std::string &eventName : writeSyscalls) {
+        event_id_t id = getEventId(set, eventName);
+        writeEventIds.insert(id);
+    }
+    std::set<event_id_t> readWriteEventIds {};
+    for (const std::string &eventName : readWriteSyscalls) {
+        event_id_t id = getEventId(set, eventName);
+        readWriteEventIds.insert(id);
+    }
+
+    event_id_t exitSyscallId = getEventId(set, "exit_syscall");
 
     // Iterate through events
     for (const auto &event : set) {
         event_id_t id = event.getId();
-        if (id == sysReadId || id == sysReadVId) {
+        if (readEventIds.find(id) != readEventIds.end()) {
             data.handleSysRead(event);
-        } else if (id == sysWriteId || id == sysWriteVId) {
+        } else if (writeEventIds.find(id) != writeEventIds.end()) {
             data.handleSysWrite(event);
+        } else if (readWriteEventIds.find(id) != readWriteEventIds.end()) {
+            data.handleSysReadWrite(event);
         } else if (id == exitSyscallId) {
             data.handleExitSyscall(event);
         }
@@ -163,28 +197,29 @@ void IoAnalysis::doExecuteSerial()
 void IoAnalysis::printResults(IoContext &data)
 {
     std::string line(80, '-');
+    int max = 100;
+    int count = 0;
+    int colWidth = 30;
 
     std::cout << line << std::endl;
     std::cout << "Result of I/O analysis" << std::endl << std::endl;
     std::cout << "Syscall I/O Read" << std::endl << std::endl;
-    std::cout << std::setw(20) << std::left << "Process" <<
-                 std::setw(20) << std::left << "Size" << std::endl;
+    std::cout << std::setw(colWidth) << std::left << "Process" <<
+                 std::setw(colWidth) << std::left << "Size" << std::endl;
 
-    int max = 10;
-    int count = 0;
     for (const IoProcess &process : data.getTidsByRead()) {
         if (++count > max) {
             break;
         }
         std::stringstream ss;
         ss << process.comm << " (" << process.tid << ")";
-        std::cout << std::setw(20) << std::left << ss.str() <<
-                     std::setw(20) << std::left << convertSize(process.readBytes) << std::endl;
+        std::cout << std::setw(colWidth) << std::left << ss.str() <<
+                     std::setw(colWidth) << std::left << convertSize(process.readBytes) << std::endl;
     }
     std::cout << line << std::endl;
     std::cout << "Syscall I/O Write" << std::endl << std::endl;
-    std::cout << std::setw(20) << std::left << "Process" <<
-                 std::setw(20) << std::left << "Size" << std::endl;
+    std::cout << std::setw(colWidth) << std::left << "Process" <<
+                 std::setw(colWidth) << std::left << "Size" << std::endl;
     count = 0;
     for (const IoProcess &process : data.getTidsByWrite()) {
         if (++count > max) {
@@ -192,8 +227,8 @@ void IoAnalysis::printResults(IoContext &data)
         }
         std::stringstream ss;
         ss << process.comm << " (" << process.tid << ")";
-        std::cout << std::setw(20) << std::left << ss.str() <<
-                     std::setw(20) << std::left << convertSize(process.writeBytes) << std::endl;
+        std::cout << std::setw(colWidth) << std::left << ss.str() <<
+                     std::setw(colWidth) << std::left << convertSize(process.writeBytes) << std::endl;
     }
 }
 

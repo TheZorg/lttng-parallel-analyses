@@ -32,6 +32,11 @@ void IoContext::handleSysWrite(const tibee::trace::EventValue &event)
     handleReadWrite(event, IOType::WRITE);
 }
 
+void IoContext::handleSysReadWrite(const tibee::trace::EventValue &event)
+{
+    handleReadWrite(event, IOType::READWRITE);
+}
+
 void IoContext::handleExitSyscall(const tibee::trace::EventValue &event)
 {
     uint64_t timestamp = event.getTimestamp();
@@ -39,12 +44,17 @@ void IoContext::handleExitSyscall(const tibee::trace::EventValue &event)
         std::cerr << "Missing tid context info" << std::endl;
         return;
     }
+    std::string comm = "";
+    if (event.getStreamEventContext()->HasField("procname")) {
+        comm = event.getStreamEventContext()->GetField("procname")->AsString();
+    }
     int tid = event.getStreamEventContext()->GetField("tid")->AsInteger();
     int64_t ret = event.getFields()->GetField("ret")->AsLong();
 
     if (!tids.contains(tid)) {
         IoProcess p;
         p.tid = tid;
+        p.comm = comm;
         tids[tid] = p;
     }
     IoProcess &p = tids[tid];
@@ -58,19 +68,17 @@ void IoContext::handleExitSyscall(const tibee::trace::EventValue &event)
     } else {
         if (ret >= 0) {
             uint64_t latency = timestamp - p.currentSyscall->start;
-            switch (p.currentSyscall->type) {
-            case IOType::READ:
+            if (p.currentSyscall->type == IOType::READ ||
+                p.currentSyscall->type == IOType::READWRITE) {
                 p.totalReadLatency += latency;
                 p.readBytes += ret;
                 p.readCount++;
-                break;
-            case IOType::WRITE:
+            }
+            if (p.currentSyscall->type == IOType::WRITE ||
+                       p.currentSyscall->type == IOType::READWRITE) {
                 p.totalWriteLatency += latency;
                 p.writeBytes += ret;
                 p.writeCount++;
-                break;
-            default:
-                break;
             }
         }
         p.currentSyscall = boost::none;
@@ -101,6 +109,9 @@ void IoContext::handleEnd()
 void IoContext::merge(const IoContext &other)
 {
     for (const IoProcess &process : other.tids.values()) {
+        if (process.tid == 6352) {
+            std::cout << "merging 6352" << std::endl;
+        }
         if (tids.contains(process.tid)) {
             IoProcess &thisTid = tids[process.tid];
 
@@ -118,7 +129,8 @@ void IoContext::merge(const IoContext &other)
                 if (process.unknownSyscall) {
                     // We need to check, in case we are at the end of the trace
                     uint64_t latency = process.unknownSyscall->end - thisTid.currentSyscall->start;
-                    if (thisTid.currentSyscall->type == IOType::READ) {
+                    if (thisTid.currentSyscall->type == IOType::READ ||
+                        thisTid.currentSyscall->type == IOType::READWRITE) {
                         int64_t ret = process.unknownSyscall->ret;
                         if (ret >= 0) {
                             thisTid.totalReadLatency += latency;
@@ -126,7 +138,8 @@ void IoContext::merge(const IoContext &other)
                             thisTid.readCount++;
                         }
                     }
-                    if (thisTid.currentSyscall->type == IOType::WRITE) {
+                    if (thisTid.currentSyscall->type == IOType::WRITE ||
+                        thisTid.currentSyscall->type == IOType::READWRITE) {
                         int64_t ret = process.unknownSyscall->ret;
                         if (ret >= 0) {
                             thisTid.totalWriteLatency += latency;
@@ -152,7 +165,6 @@ void IoContext::handleReadWrite(const tibee::trace::EventValue &event, IOType ty
         return;
     }
     int tid = event.getStreamEventContext()->GetField("tid")->AsInteger();
-    int fd = event.getFields()->GetField("fd")->AsInteger();
 
     if (!tids.contains(tid)) {
         IoProcess p;
@@ -163,6 +175,13 @@ void IoContext::handleReadWrite(const tibee::trace::EventValue &event, IOType ty
     p.currentSyscall = Syscall();
     p.currentSyscall->type = type;
     p.currentSyscall->start = timestamp;
-    p.currentSyscall->fd = fd;
     p.currentSyscall->name = name;
+
+    if (type == IOType::READ || type == IOType::WRITE) {
+        int fd = event.getFields()->GetField("fd")->AsInteger();
+        p.currentSyscall->fd = fd;
+    } else if (type == IOType::READWRITE) {
+        // TODO: fd analysis
+    }
+
 }

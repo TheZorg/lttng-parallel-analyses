@@ -25,8 +25,8 @@
 
 #include <boost/optional.hpp>
 
-enum class IOType { UNKNOWN, READ, WRITE };
-static const std::string IOTypeStrings[] = { "UNKNOWN", "READ", "WRITE" };
+enum class IOType { UNKNOWN, READ, WRITE, READWRITE };
+static const std::string IOTypeStrings[] = { "UNKNOWN", "READ", "WRITE", "READWRITE" };
 
 struct Syscall {
     IOType type = IOType::UNKNOWN;
@@ -60,6 +60,7 @@ public:
 
     void handleSysRead(const tibee::trace::EventValue &event);
     void handleSysWrite(const tibee::trace::EventValue &event);
+    void handleSysReadWrite(const tibee::trace::EventValue &event);
     void handleExitSyscall(const tibee::trace::EventValue &event);
     void handleEnd();
 
