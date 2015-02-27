@@ -125,7 +125,9 @@ IoContext doMap(IoWorker &worker)
     event_id_t exitSyscallId = getEventId(set, "exit_syscall");
 
     // Iterate through events
+    uint64_t count = 0;
     for ((void)iter; iter != endIter; ++iter) {
+        count++;
         const auto &event = *iter;
         event_id_t id = event.getId();
         if (readEventIds.find(id) != readEventIds.end()) {
@@ -137,6 +139,15 @@ IoContext doMap(IoWorker &worker)
         } else if (id == exitSyscallId) {
             data.handleExitSyscall(event);
         }
+    }
+
+    if (worker.getVerbose()) {
+        const timestamp_t *begin = worker.getBeginPos();
+        const timestamp_t *end = worker.getEndPos();
+        std::string beginString = begin ? std::to_string(*begin) : "START";
+        std::string endString = end ? std::to_string(*end) : "END";
+        std::cout << "Worker " << worker.getId() << " processed " << count << " events between timestamps "
+                  << beginString << " and " << endString << std::endl;
     }
 
     data.handleEnd();
@@ -197,7 +208,7 @@ void IoAnalysis::doExecuteSerial()
 void IoAnalysis::printResults(IoContext &data)
 {
     std::string line(80, '-');
-    int max = 100;
+    int max = 10;
     int count = 0;
     int colWidth = 30;
 

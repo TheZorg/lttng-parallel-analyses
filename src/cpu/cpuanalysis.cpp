@@ -110,13 +110,23 @@ CpuContext doMap(CpuWorker &worker)
         std::cerr << "The trace is missing sched_switch events." << std::endl;
         return data;
     }
-
+    uint64_t count = 0;
     for ((void)iter; iter != endIter; ++iter) {
+        count++;
         const auto &event = *iter;
         event_id_t id = event.getId();
         if (id == schedSwitchId) {
             data.handleSchedSwitch(event);
         }
+    }
+
+    if (worker.getVerbose()) {
+        const timestamp_t *begin = worker.getBeginPos();
+        const timestamp_t *end = worker.getEndPos();
+        std::string beginString = begin ? std::to_string(*begin) : "START";
+        std::string endString = end ? std::to_string(*end) : "END";
+        std::cout << "Worker " << worker.getId() << " processed " << count << " events between timestamps "
+                  << beginString << " and " << endString << std::endl;
     }
 
     data.handleEnd();
