@@ -109,9 +109,6 @@ void IoContext::handleEnd()
 void IoContext::merge(const IoContext &other)
 {
     for (const IoProcess &process : other.tids.values()) {
-        if (process.tid == 6352) {
-            std::cout << "merging 6352" << std::endl;
-        }
         if (tids.contains(process.tid)) {
             IoProcess &thisTid = tids[process.tid];
 
