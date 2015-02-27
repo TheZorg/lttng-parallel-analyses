@@ -25,7 +25,8 @@ SOURCES += src/main.cpp \
     src/cpu/cpucontext.cpp \
     src/io/ioanalysis.cpp \
     src/io/iocontext.cpp \
-    src/common/utils.cpp
+    src/common/utils.cpp \
+    src/common/packetindex.cpp
 
 HEADERS += \
     src/count/countanalysis.h \
@@ -35,7 +36,8 @@ HEADERS += \
     src/cpu/cpucontext.h \
     src/io/ioanalysis.h \
     src/io/iocontext.h \
-    src/common/utils.h
+    src/common/utils.h \
+    src/common/packetindex.h
 
 QMAKE_LFLAGS += '-Wl,-rpath,\'$$PWD/contrib/tigerbeetle/contrib/babeltrace/lib/.libs\''
 QMAKE_LFLAGS += '-Wl,-rpath,\'$$PWD/contrib/tigerbeetle/contrib/babeltrace/formats/ctf/.libs\''
