@@ -27,7 +27,15 @@ class CpuWorker : public TraceWorker<CpuContext>
 public:
 
     CpuWorker(int id, TraceSet &set, timestamp_t *begin, timestamp_t *end, bool verbose = false);
-    CpuWorker(CpuWorker &&other);
+    CpuWorker(CpuWorker &other) = delete;
+    CpuWorker &operator =(const CpuWorker &other) = delete;
+
+    CpuWorker(CpuWorker &&other) : TraceWorker<CpuContext>(std::move(other)) {}
+    CpuWorker &operator =(CpuWorker &&other)
+    {
+        TraceWorker<CpuContext>::operator =(std::move(other));
+        return *this;
+    }
 
     CpuContext &getData();
 

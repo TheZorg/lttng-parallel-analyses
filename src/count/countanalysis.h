@@ -24,7 +24,16 @@
 class CountWorker : public TraceWorker<int> {
 public:
     CountWorker(int id, TraceSet &set, timestamp_t *begin, timestamp_t *end, bool verbose = false);
-    CountWorker(CountWorker &&other);
+    CountWorker(CountWorker &other) = delete;
+    CountWorker &operator =(const CountWorker &other) = delete;
+
+    CountWorker(CountWorker &&other) : TraceWorker<int>(std::move(other)) {}
+    CountWorker &operator =(CountWorker &&other)
+    {
+        TraceWorker<int>::operator =(std::move(other));
+        return *this;
+    }
+
     virtual int doMap() const;
     static void doReduce(int &final, const int &intermediate);
 };

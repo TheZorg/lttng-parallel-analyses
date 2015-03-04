@@ -39,11 +39,6 @@ CountWorker::CountWorker(int id, TraceSet &set, timestamp_t *begin, timestamp_t 
 {
 }
 
-CountWorker::CountWorker(CountWorker &&other) :
-    TraceWorker(std::move(other))
-{
-}
-
 int CountWorker::doMap() const {
     const TraceSet &traceSet = getTraceSet();
     TraceSet::Iterator iter = traceSet.between(getBeginPos(), getEndPos());

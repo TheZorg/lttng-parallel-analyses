@@ -102,9 +102,6 @@ PacketIndex::PacketIndex(std::string packetIndexPath, const TraceSet &trace)
     CtfPacketIndex *ctfIndex = (CtfPacketIndex*) calloc(packetIndexLen, sizeof(char));
     const auto &traceInfos = *trace.getTracesInfos().begin();
     const auto &clockInfos = traceInfos->getClockInfos();
-    std::cout << "offset:" << clockInfos.offset << std::endl;
-    std::cout << "offset_s:" << clockInfos.offset_s << std::endl;
-    std::cout << "freq:" << clockInfos.freq << std::endl;
 
     while (fread(ctfIndex, packetIndexLen, 1, fp) == 1) {
         PacketHeader index;

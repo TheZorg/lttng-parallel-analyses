@@ -26,9 +26,15 @@ class IoWorker : public TraceWorker<IoContext>
 {
 public:
     IoWorker(int id, TraceSet &set, timestamp_t *begin, timestamp_t *end, bool verbose = false);
-    IoWorker(IoWorker &&other);
+    IoWorker(IoWorker &other) = delete;
+    IoWorker &operator =(const IoWorker &other) = delete;
 
-    IoWorker &operator=(IoWorker &&other);
+    IoWorker(IoWorker &&other) : TraceWorker<IoContext>(std::move(other)) {}
+    IoWorker &operator =(IoWorker &&other)
+    {
+        TraceWorker<IoContext>::operator =(std::move(other));
+        return *this;
+    }
 
     virtual IoContext doMap() const;
     static void doReduce(IoContext &final, const IoContext &intermediate);
@@ -46,9 +52,10 @@ protected:
     virtual void doExecuteSerial();
     virtual void printResults(IoContext &data);
     virtual void doEnd(IoContext &data);
-
-private:
-    void balancedExecute();
+    virtual void doExecuteParallelBalanced()
+    {
+        std::cerr << "Balanced analysis not yet supported." << std::endl;
+    }
 };
 
 #endif // IOANALYSIS_H

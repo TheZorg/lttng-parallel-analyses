@@ -40,11 +40,6 @@ CpuWorker::CpuWorker(int id, TraceSet &set, timestamp_t *begin, timestamp_t *end
 {
 }
 
-CpuWorker::CpuWorker(CpuWorker &&other) :
-    TraceWorker(std::move(other))
-{
-}
-
 CpuContext CpuWorker::doMap() const
 {
     const TraceSet &traceSet = getTraceSet();

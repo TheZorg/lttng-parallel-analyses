@@ -19,14 +19,17 @@
 #ifndef TRACEANALYSIS_H
 #define TRACEANALYSIS_H
 
-#include "tracewrapper.h"
-
 #include <base/BasicTypes.hpp>
 #include <trace/TraceSet.hpp>
 
 #include <QObject>
 #include <QTime>
 #include <QtConcurrent>
+
+#include <functional>
+
+#include "common/packetindex.h"
+#include "common/traceanalysis.h"
 
 using namespace tibee;
 using namespace tibee::trace;
@@ -85,6 +88,15 @@ public:
         doBenchmark = value;
     }
 
+    bool getBalanced() const
+    {
+        return balanced;
+    }
+    void setBalanced(bool value)
+    {
+        balanced = value;
+    }
+
 signals:
     void finished();
 
@@ -118,6 +130,7 @@ protected:
     QString tracePath;
     bool doBenchmark;
     bool verbose;
+    bool balanced;
 };
 
 template <typename WorkerType, typename ReduceResultType>
@@ -132,6 +145,155 @@ protected:
     virtual void doEnd(ReduceResultType &data) = 0;
     virtual void printResults(ReduceResultType &data) = 0;
     virtual void doExecuteParallel()
+    {
+        if (!balanced) {
+            doExecuteParallelUnbalanced();
+        } else {
+            doExecuteParallelBalanced();
+        }
+    }
+
+    virtual void doExecuteParallelBalanced()
+    {
+        std::unordered_map<std::string, TraceSet> traceSets; // Traces will be emplaced in here
+
+        // Create temp dir for split streams
+        QDir tmpDir(QDir::tempPath()); // /tmp
+        QFileInfo traceDirInfo(tracePath);
+
+        QString perStreamDirPath = traceDirInfo.fileName() + "_per_stream-" + QUuid::createUuid().toString();
+        tmpDir.mkdir(perStreamDirPath);
+        tmpDir.cd(perStreamDirPath); // /tmp/kernel_per_stream-{...}
+
+        // Iterate through the stream files and symlink in proper dir
+        QDir traceDir(tracePath);
+        QString metadataPath = traceDir.absoluteFilePath("metadata");
+        QFileInfoList fileList = traceDir.entryInfoList(QStringList(), QDir::Files);
+        for (int i = 0; i < fileList.size(); i++) {
+            QFileInfo fileInfo = fileList.at(i);
+            if (fileInfo.fileName() != "metadata") {
+                // Make a dir for the stream
+                QString streamDirPath = fileInfo.fileName() + ".d";
+                tmpDir.mkdir(streamDirPath);
+                tmpDir.cd(streamDirPath); // /tmp/kernel_per_stream-{...}/channel0_*.d
+
+                // Make a symlink to the stream
+                QFile::link(fileInfo.absoluteFilePath(), tmpDir.absoluteFilePath(fileInfo.fileName()));
+
+                // Make a symlink to the metadata
+                QFile::link(metadataPath, tmpDir.absoluteFilePath("metadata"));
+
+                // Index
+                tmpDir.mkdir("index");
+                tmpDir.cd("index"); // /tmp/kernel_per_stream-{...}/channel0_*.d/index
+                traceDir.cd("index");
+                QFile::link(traceDir.absoluteFilePath(fileInfo.fileName() + ".idx"), tmpDir.absoluteFilePath(fileInfo.fileName() + ".idx"));
+                traceDir.cdUp();
+                tmpDir.cdUp(); // /tmp/kernel_per_stream-{...}/channel0_*.d
+
+                // Add traceset
+                auto ret = traceSets.emplace(fileInfo.fileName().toStdString(), TraceSet());
+                // emplace returns a pair with first = iterator to the inserted pair
+                ret.first->second.addTrace(tmpDir.absolutePath().toStdString());
+
+                // Go back up
+                tmpDir.cdUp(); // /tmp/kernel_per_stream-{...}
+            }
+        }
+
+        // Parse packet indices
+        std::vector<WorkerType> workers;
+        std::unordered_map<std::string, std::vector<timestamp_t>> positionsPerTrace;
+        traceDir.cd("index");
+        fileList = traceDir.entryInfoList(QStringList(), QDir::Files);
+        for (int i = 0; i < fileList.size(); i++) {
+            QFileInfo fileInfo = fileList.at(i);
+            std::string name = fileInfo.baseName().toStdString();
+            TraceSet &trace = traceSets.at(name);
+            std::vector<timestamp_t> &positions = positionsPerTrace[name];
+            PacketIndex index(fileInfo.absoluteFilePath().toStdString(), trace);
+            const std::vector<PacketHeader> &indices = index.getPacketIndex();
+
+            // Get total size for all the packets
+            uint64_t size = 0;
+            for (const PacketHeader &header : indices) {
+                size += header.contentSize;
+            }
+
+            // Try to split packets "evenly"
+            uint64_t maxPacketSize = size/indices.size();
+            if (this->verbose) {
+                std::cout << "Num packets for stream " << index.getStreamId()
+                          << " : " << indices.size() << std::endl;
+            }
+
+            // Accumulator for packet size
+            uint64_t acc = 0;
+
+            // Iterate through packets, accumulating until we have a big enough chunk
+            // NOTE: disregard last packet, since the BT_SEEK_LAST will take care of it
+            int numChunks = 0;
+            for (unsigned int i = 0; i < indices.size() - 1; i++) {
+                PacketHeader header = indices[i];
+                acc += header.contentSize;
+                if (acc >= maxPacketSize) {
+                    // Our chunk is big enough, add the timestamp to our positions
+                    numChunks++;
+                    acc = 0;
+                    positions.push_back(header.tsReal.timestampEnd);
+                }
+            }
+
+            // Build the params list
+            for (unsigned int i = 0; i <= positions.size(); i++)
+            {
+                timestamp_t *begin, *end;
+                if (i == 0) {
+                    begin = nullptr;
+                } else {
+                    begin = &positions[i - 1];
+                }
+                if (i == positions.size()) {
+                    end = nullptr;
+                } else {
+                    end = &positions[i];
+                }
+                workers.emplace_back(i, trace, begin, end, verbose);
+            }
+
+            if (this->verbose) {
+                std::cout << "Num chunks for stream " << index.getStreamId()
+                          << " : " << numChunks << std::endl;
+            }
+
+        }
+        traceDir.cdUp();
+
+        // Sort by begin time
+        std::sort(workers.begin(), workers.end(), [](const WorkerType &a, const WorkerType &b) {
+            if (b.getBeginPos() == NULL) return false;
+            if (a.getBeginPos() == NULL) return true;
+            return *a.getBeginPos() < *b.getBeginPos();
+        });
+
+        // Launch map reduce
+        QtConcurrent::ReduceOptions options;
+        if (isOrderedReduce()) options = QtConcurrent::OrderedReduce;
+        else options = QtConcurrent::UnorderedReduce;
+        auto future = QtConcurrent::mappedReduced(workers.begin(), workers.end(),
+                                                     &WorkerType::doMap, &WorkerType::doReduce, options);
+
+        auto data = future.result();
+
+        doEnd(data);
+
+        printResults(data);
+
+        // Remove the temporary directory
+        tmpDir.removeRecursively();
+    }
+
+    virtual void doExecuteParallelUnbalanced()
     {
         timestamp_t positions[threads];
         std::vector<WorkerType> workers;
@@ -192,13 +354,25 @@ class TraceWorker {
 public:
     typedef MapResultType MapResult;
     TraceWorker(int id, TraceSet &set, timestamp_t *begin, timestamp_t *end, bool verbose = false) :
-        id(id), traceSet(set), beginPos(begin), endPos(end), verbose(verbose)
+        id(id), traceSet(set), verbose(verbose)
     {
+        if (begin != NULL) {
+            beginPosVal = *begin+1; // Fixes overlap problem
+            beginPos = &beginPosVal;
+        } else {
+            beginPos = NULL;
+        }
+        if (end != NULL) {
+            endPosVal = *end;
+            endPos = &endPosVal;
+        } else {
+            endPos = NULL;
+        }
     }
 
     // Don't allow copying
     TraceWorker(const TraceWorker &other) = delete;
-    TraceWorker& operator=(const TraceWorker &other) & = delete;
+    TraceWorker& operator=(const TraceWorker &other) = delete;
 
     virtual ~TraceWorker()
     {
@@ -208,6 +382,44 @@ public:
     TraceWorker(TraceWorker &&other) : id(std::move(other.id)), traceSet(other.traceSet),
         beginPos(std::move(other.beginPos)), endPos(std::move(other.endPos)), verbose(std::move(other.verbose))
     {
+        if (other.beginPos != NULL) {
+            beginPosVal = *other.beginPos;
+            beginPos = &beginPosVal;
+        } else {
+            beginPos = NULL;
+        }
+        if (other.endPos != NULL) {
+            endPosVal = *other.endPos;
+            endPos = &endPosVal;
+        } else {
+            endPos = NULL;
+        }
+        other.beginPos = NULL;
+        other.endPos = NULL;
+    }
+
+    TraceWorker &operator=(TraceWorker &&other)
+    {
+        if (this != &other) {
+            id = std::move(other.id);
+            traceSet = std::move(other.traceSet);
+            verbose = std::move(other.verbose);
+            if (other.beginPos != NULL) {
+                beginPosVal = *other.beginPos;
+                beginPos = &beginPosVal;
+            } else {
+                beginPos = NULL;
+            }
+            if (other.endPos != NULL) {
+                endPosVal = *other.endPos;
+                endPos = &endPosVal;
+            } else {
+                endPos = NULL;
+            }
+            other.beginPos = NULL;
+            other.endPos = NULL;
+        }
+        return *this;
     }
 
     // Accessors
@@ -261,7 +473,9 @@ public:
 
 protected:
     int id;
-    TraceSet &traceSet;
+    std::reference_wrapper<TraceSet> traceSet;
+    timestamp_t beginPosVal;
+    timestamp_t endPosVal;
     const timestamp_t *beginPos;
     const timestamp_t *endPos;
     bool verbose;
