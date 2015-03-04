@@ -34,60 +34,19 @@
 using namespace tibee;
 using namespace tibee::trace;
 
-static void doSum(int &finalResult, const int &intermediate);
-static int doCount(CountWorker &worker);
-
-void CountAnalysis::doExecuteParallel() {
-    timestamp_t positions[threads];
-    std::vector<CountWorker> workers;
-    timestamp_t begin, end;
-
-    // Open a trace to get the begin/end timestamps
-    TraceSet set;
-    set.addTrace(this->tracePath.toStdString());
-
-    // Get begin timestamp
-    begin = set.getBegin();
-
-    // Get end timestamp
-    end = set.getEnd();
-
-    // Calculate begin/end timestamp pairs for each chunk
-    timestamp_t step = (end - begin)/threads;
-
-    for (int i = 0; i < threads; i++)
-    {
-        positions[i] = begin + (i*step);
-    }
-
-    // Build the params list
-    for (int i = 0; i < threads; i++)
-    {
-        timestamp_t *begin, *end;
-        if (i == 0) {
-            begin = nullptr;
-        } else {
-            begin = &positions[i];
-        }
-        if (i == threads - 1) {
-            end = nullptr;
-        } else {
-            end = &positions[i+1];
-        }
-        workers.emplace_back(i, set, begin, end, verbose);
-    }
-
-    // Launch map reduce
-    QFuture<int> countFuture = QtConcurrent::mappedReduced(workers.begin(), workers.end(), doCount, doSum);
-
-    int count = countFuture.result();
-
-    printCount(count);
+CountWorker::CountWorker(int id, TraceSet &set, timestamp_t *begin, timestamp_t *end, bool verbose) :
+    TraceWorker(id, set, begin, end, verbose)
+{
 }
 
-int doCount(CountWorker &worker) {
-    TraceSet &traceSet = worker.getTraceSet();
-    TraceSet::Iterator iter = traceSet.between(worker.getBeginPos(), worker.getEndPos());
+CountWorker::CountWorker(CountWorker &&other) :
+    TraceWorker(std::move(other))
+{
+}
+
+int CountWorker::doMap() const {
+    const TraceSet &traceSet = getTraceSet();
+    TraceSet::Iterator iter = traceSet.between(getBeginPos(), getEndPos());
     TraceSet::Iterator endIter = traceSet.end();
 
     int count = 0;
@@ -95,16 +54,21 @@ int doCount(CountWorker &worker) {
         count++;
     }
 
-    if (worker.getVerbose()) {
-        const timestamp_t *begin = worker.getBeginPos();
-        const timestamp_t *end = worker.getEndPos();
+    if (getVerbose()) {
+        const timestamp_t *begin = getBeginPos();
+        const timestamp_t *end = getEndPos();
         std::string beginString = begin ? std::to_string(*begin) : "START";
         std::string endString = end ? std::to_string(*end) : "END";
-        std::cout << "Worker " << worker.getId() << " counted " << count << " events between timestamps "
+        std::cout << "Worker " << getId() << " counted " << count << " events between timestamps "
                   << beginString << " and " << endString << std::endl;
     }
 
     return count;
+}
+
+void CountWorker::doReduce(int &final, const int &intermediate)
+{
+    final += intermediate;
 }
 
 void CountAnalysis::doExecuteSerial() {
@@ -117,10 +81,15 @@ void CountAnalysis::doExecuteSerial() {
         count++;
     }
 
-    printCount(count);
+    printResults(count);
 }
 
-void CountAnalysis::printCount(int count)
+bool CountAnalysis::isOrderedReduce()
+{
+    return false;
+}
+
+void CountAnalysis::printResults(int &count)
 {
     std::string line(80, '-');
 
@@ -133,19 +102,4 @@ void CountAnalysis::printCount(int count)
     std::cout << "Result of count analysis" << std::endl << std::endl;
     std::cout << std::setw(20) << std::left << "Number of events" << countss.str() << std::endl;
     std::cout << line << std::endl;
-}
-
-void doSum(int &finalResult, const int &intermediate)
-{
-    finalResult += intermediate;
-}
-
-CountWorker::CountWorker(int id, TraceSet &set, timestamp_t *begin, timestamp_t *end, bool verbose) :
-    TraceWorker(id, set, begin, end, verbose)
-{
-}
-
-CountWorker::CountWorker(CountWorker &&other) :
-    TraceWorker(std::move(other))
-{
 }

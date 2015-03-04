@@ -133,7 +133,7 @@ CommandLineParseResult parseCommandLine(QCommandLineParser &parser, Options &opt
     return CommandLineParseResult::OK;
 }
 
-TraceAnalysis* getAnalysisFromName(QString analysisName, QCoreApplication *app) {
+AbstractTraceAnalysis* getAnalysisFromName(QString analysisName, QCoreApplication *app) {
     if (analysisName == "count") {
         return new CountAnalysis(app);
     } else if (analysisName == "cpu") {
@@ -180,7 +180,7 @@ int main(int argc, char *argv[]) {
         std::cout << "<path/to/trace> : " << qPrintable(opts.tracePath) << std::endl;
     }
 
-    TraceAnalysis *analysis = getAnalysisFromName(opts.analysisName, &a);
+    AbstractTraceAnalysis *analysis = getAnalysisFromName(opts.analysisName, &a);
     if (analysis == nullptr) {
         std::cerr << "This analysis has not yet been implemented.";
         std::cerr << std::endl << std::endl;

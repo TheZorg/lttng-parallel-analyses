@@ -22,7 +22,7 @@
 #include <trace/BasicTypes.hpp>
 #include <trace/TraceSet.hpp>
 
-tibee::trace::event_id_t getEventId(tibee::trace::TraceSet &set, const std::string eventName);
+tibee::trace::event_id_t getEventId(const tibee::trace::TraceSet &set, const std::string eventName);
 std::string convertSize(uint64_t size);
 
 #endif // UTILS_H

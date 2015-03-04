@@ -21,24 +21,26 @@
 
 #include "common/traceanalysis.h"
 
-class CountAnalysis : public TraceAnalysis
+class CountWorker : public TraceWorker<int> {
+public:
+    CountWorker(int id, TraceSet &set, timestamp_t *begin, timestamp_t *end, bool verbose = false);
+    CountWorker(CountWorker &&other);
+    virtual int doMap() const;
+    static void doReduce(int &final, const int &intermediate);
+};
+
+class CountAnalysis : public TraceAnalysis<CountWorker, int>
 {
     Q_OBJECT
 public:
     CountAnalysis(QObject *parent) : TraceAnalysis(parent) { }
 
 protected:
-    virtual void doExecuteParallel();
+    virtual void doEnd(int &data) {(void) data;}
+    virtual void printResults(int &data);
     virtual void doExecuteSerial();
+    virtual bool isOrderedReduce();
 
-private:
-    void printCount(int count);
-};
-
-class CountWorker : public TraceWorker {
-public:
-    CountWorker(int id, TraceSet &set, timestamp_t *begin, timestamp_t *end, bool verbose = false);
-    CountWorker(CountWorker &&other);
 };
 
 #endif // COUNTANALYSIS_H

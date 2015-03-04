@@ -22,31 +22,33 @@
 #include "common/traceanalysis.h"
 #include "iocontext.h"
 
-class IoAnalysis : public TraceAnalysis
+class IoWorker : public TraceWorker<IoContext>
+{
+public:
+    IoWorker(int id, TraceSet &set, timestamp_t *begin, timestamp_t *end, bool verbose = false);
+    IoWorker(IoWorker &&other);
+
+    IoWorker &operator=(IoWorker &&other);
+
+    virtual IoContext doMap() const;
+    static void doReduce(IoContext &final, const IoContext &intermediate);
+
+};
+
+class IoAnalysis : public TraceAnalysis<IoWorker, IoContext>
 {
     Q_OBJECT
 public:
     IoAnalysis(QObject *parent) : TraceAnalysis(parent) {}
 
 protected:
-    virtual void doExecuteParallel();
+    virtual bool isOrderedReduce();
     virtual void doExecuteSerial();
+    virtual void printResults(IoContext &data);
+    virtual void doEnd(IoContext &data);
 
 private:
-    void printResults(IoContext &data);
-};
-
-class IoWorker : public TraceWorker
-{
-public:
-
-    IoWorker(int id, TraceSet &set, timestamp_t *begin, timestamp_t *end, bool verbose = false);
-    IoWorker(IoWorker &&other);
-
-    IoContext &getData();
-
-private:
-    IoContext data;
+    void balancedExecute();
 };
 
 #endif // IOANALYSIS_H

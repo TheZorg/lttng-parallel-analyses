@@ -22,21 +22,7 @@
 #include "common/traceanalysis.h"
 #include "cpucontext.h"
 
-class CpuAnalysis : public TraceAnalysis
-{
-    Q_OBJECT
-public:
-    CpuAnalysis(QObject *parent) : TraceAnalysis(parent) { }
-
-protected:
-    virtual void doExecuteParallel();
-    virtual void doExecuteSerial();
-
-private:
-    void printResults(CpuContext &data);
-};
-
-class CpuWorker : public TraceWorker
+class CpuWorker : public TraceWorker<CpuContext>
 {
 public:
 
@@ -45,8 +31,21 @@ public:
 
     CpuContext &getData();
 
-private:
-    CpuContext data;
+    virtual CpuContext doMap() const;
+    static void doReduce(CpuContext &final, const CpuContext &intermediate);
+};
+
+class CpuAnalysis : public TraceAnalysis<CpuWorker, CpuContext>
+{
+    Q_OBJECT
+public:
+    CpuAnalysis(QObject *parent) : TraceAnalysis(parent) { }
+
+protected:
+    virtual bool isOrderedReduce();
+    virtual void doExecuteSerial();
+    virtual void printResults(CpuContext &data);
+    virtual void doEnd(CpuContext &data);
 };
 
 #endif // CPUANALYSIS_H

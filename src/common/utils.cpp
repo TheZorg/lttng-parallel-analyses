@@ -21,7 +21,7 @@
 #include <cmath>
 #include <sstream>
 
-tibee::trace::event_id_t getEventId(tibee::trace::TraceSet &set, const std::string eventName)
+tibee::trace::event_id_t getEventId(const tibee::trace::TraceSet &set, const std::string eventName)
 {
     auto &tracesInfos = set.getTracesInfos();
     for (const auto &traceInfos : tracesInfos) {

@@ -35,71 +35,26 @@
 
 #include <boost/optional.hpp>
 
-CpuContext doMap(CpuWorker &worker);
-void doReduce(CpuContext &final, const CpuContext &intermediate);
-
-void CpuAnalysis::doExecuteParallel()
+CpuWorker::CpuWorker(int id, TraceSet &set, timestamp_t *begin, timestamp_t *end, bool verbose) :
+    TraceWorker(id, set, begin, end, verbose)
 {
-    timestamp_t positions[threads];
-    std::vector<CpuWorker> workers;
-    timestamp_t begin, end;
-
-    // Open a trace to get the begin/end timestamps
-    TraceSet set;
-    set.addTrace(this->tracePath.toStdString());
-
-    // Get begin timestamp
-    begin = set.getBegin();
-
-    // Get end timestamp
-    end = set.getEnd();
-
-    // Calculate begin/end timestamp pairs for each chunk
-    timestamp_t step = (end - begin)/threads;
-
-    for (int i = 0; i < threads; i++)
-    {
-        positions[i] = begin + (i*step);
-    }
-
-    // Build the params list
-    for (int i = 0; i < threads; i++)
-    {
-        timestamp_t *begin, *end;
-        if (i == 0) {
-            begin = nullptr;
-        } else {
-            begin = &positions[i];
-        }
-        if (i == threads - 1) {
-            end = nullptr;
-        } else {
-            end = &positions[i+1];
-        }
-        workers.emplace_back(i, set, begin, end, verbose);
-    }
-
-    // Launch map reduce
-    auto cpuFuture = QtConcurrent::mappedReduced(workers.begin(), workers.end(),
-                                                 doMap, doReduce, QtConcurrent::OrderedReduce);
-
-    auto data = cpuFuture.result();
-
-    data.handleEnd();
-
-    printResults(data);
 }
 
-CpuContext doMap(CpuWorker &worker)
+CpuWorker::CpuWorker(CpuWorker &&other) :
+    TraceWorker(std::move(other))
 {
-    TraceSet &traceSet = worker.getTraceSet();
-    TraceSet::Iterator iter = traceSet.between(worker.getBeginPos(), worker.getEndPos());
+}
+
+CpuContext CpuWorker::doMap() const
+{
+    const TraceSet &traceSet = getTraceSet();
+    TraceSet::Iterator iter = traceSet.between(getBeginPos(), getEndPos());
     TraceSet::Iterator endIter = traceSet.end();
 
     // Set begin and end timestamps
-    const timestamp_t *begin = worker.getBeginPos();
-    const timestamp_t *end = worker.getEndPos();
-    CpuContext &data = worker.getData();
+    const timestamp_t *begin = getBeginPos();
+    const timestamp_t *end = getEndPos();
+    CpuContext data;
     data.setStart(begin ? *begin : traceSet.getBegin());
     data.setEnd(end ? *end : traceSet.getEnd());
 
@@ -120,12 +75,12 @@ CpuContext doMap(CpuWorker &worker)
         }
     }
 
-    if (worker.getVerbose()) {
-        const timestamp_t *begin = worker.getBeginPos();
-        const timestamp_t *end = worker.getEndPos();
+    if (getVerbose()) {
+        const timestamp_t *begin = getBeginPos();
+        const timestamp_t *end = getEndPos();
         std::string beginString = begin ? std::to_string(*begin) : "START";
         std::string endString = end ? std::to_string(*end) : "END";
-        std::cout << "Worker " << worker.getId() << " processed " << count << " events between timestamps "
+        std::cout << "Worker " << getId() << " processed " << count << " events between timestamps "
                   << beginString << " and " << endString << std::endl;
     }
 
@@ -134,9 +89,14 @@ CpuContext doMap(CpuWorker &worker)
     return data;
 }
 
-void doReduce(CpuContext &final, const CpuContext &intermediate)
+void CpuWorker::doReduce(CpuContext &final, const CpuContext &intermediate)
 {
     final.merge(intermediate);
+}
+
+bool CpuAnalysis::isOrderedReduce()
+{
+    return false;
 }
 
 void CpuAnalysis::doExecuteSerial()
@@ -168,6 +128,10 @@ void CpuAnalysis::doExecuteSerial()
     data.handleEnd();
 
     printResults(data);
+}
+
+void CpuAnalysis::doEnd(CpuContext &data) {
+    data.handleEnd();
 }
 
 void CpuAnalysis::printResults(CpuContext &data)
@@ -203,20 +167,4 @@ void CpuAnalysis::printResults(CpuContext &data)
         std::cout << std::setw(30) << std::left << ss.str()
                   << std::setprecision(2) << std::fixed << pc << std::endl;
     }
-}
-
-
-CpuWorker::CpuWorker(int id, TraceSet &set, timestamp_t *begin, timestamp_t *end, bool verbose) :
-    TraceWorker(id, set, begin, end, verbose), data()
-{
-}
-
-CpuWorker::CpuWorker(CpuWorker &&other) :
-    TraceWorker(std::move(other)), data(std::move(other.data))
-{
-}
-
-CpuContext &CpuWorker::getData()
-{
-    return data;
 }

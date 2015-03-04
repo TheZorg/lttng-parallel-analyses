@@ -21,14 +21,19 @@
 
 #include <cstdint>
 #include <string>
-#include <sys/types.h>
 #include <vector>
+
+#include <sys/types.h>
+
+#include <trace/TraceSet.hpp>
+
+using namespace tibee::trace;
 
 /*
  * Header at the beginning of each index file.
  * All integer fields are stored in big endian.
  */
-struct ctf_packet_index_file_hdr {
+struct CtfPacketIndexFileHeader {
     uint32_t magic;
     uint32_t index_major;
     uint32_t index_minor;
@@ -40,41 +45,43 @@ struct ctf_packet_index_file_hdr {
  * Packet index generated for each trace packet store in a trace file.
  * All integer fields are stored in big endian.
  */
-struct ctf_packet_index {
+struct CtfPacketIndex {
     uint64_t offset;		/* offset of the packet in the file, in bytes */
-    uint64_t packet_size;		/* packet size, in bits */
-    uint64_t content_size;		/* content size, in bits */
-    uint64_t timestamp_begin;
-    uint64_t timestamp_end;
-    uint64_t events_discarded;
-    uint64_t stream_id;
+    uint64_t packetSize;		/* packet size, in bits */
+    uint64_t contentSize;		/* content size, in bits */
+    uint64_t timestampBegin;
+    uint64_t timestampEnd;
+    uint64_t eventsDiscarded;
+    uint64_t streamId;
 } __attribute__((__packed__));
 
-struct packet_index_time {
-    uint64_t timestamp_begin;
-    uint64_t timestamp_end;
+struct PacketIndexTime {
+    uint64_t timestampBegin;
+    uint64_t timestampEnd;
 };
 
-struct packet_index {
+struct PacketHeader {
     off_t offset;		/* offset of the packet in the file, in bytes */
-    int64_t data_offset;	/* offset of data within the packet, in bits */
-    uint64_t packet_size;	/* packet size, in bits */
-    uint64_t content_size;	/* content size, in bits */
-    uint64_t events_discarded;
-    uint64_t events_discarded_len;	/* length of the field, in bits */
-    struct packet_index_time ts_cycles;	/* timestamp in cycles */
-    struct packet_index_time ts_real;	/* realtime timestamp */
+    int64_t dataOffset;	/* offset of data within the packet, in bits */
+    uint64_t packetSize;	/* packet size, in bits */
+    uint64_t contentSize;	/* content size, in bits */
+    uint64_t eventsDiscarded;
+    uint64_t eventsDiscardedLen;	/* length of the field, in bits */
+    struct PacketIndexTime tsCycles;	/* timestamp in cycles */
+    struct PacketIndexTime tsReal;	/* realtime timestamp */
 };
 
+typedef std::vector<PacketHeader> Indices;
 class PacketIndex
 {
 private:
-    std::string path;
-    ctf_packet_index_file_hdr header;
-    std::vector<packet_index> indices;
+    int streamId;
+    CtfPacketIndexFileHeader header;
+    std::vector<PacketHeader> indices;
 public:
-    PacketIndex(std::string packetIndexPath);
-    const std::vector<packet_index> &getPacketIndex() const;
+    PacketIndex(std::string packetIndexPath, const TraceSet &trace);
+    const std::vector<PacketHeader> &getPacketIndex() const;
+    int getStreamId() const;
 };
 
 #endif // PACKETINDEX_H

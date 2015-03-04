@@ -22,13 +22,49 @@
 #include <cstring>
 #include <iostream>
 
+#include <QDir>
+
 #include <endian.h>
 
 #define CTF_INDEX_MAGIC 0xC1F1DCC1
 #define CTF_INDEX_MAJOR 1
 #define CTF_INDEX_MINOR 0
 
-PacketIndex::PacketIndex(std::string packetIndexPath)
+using namespace tibee::trace;
+
+static inline
+uint64_t clock_cycles_to_ns(const ClockInfos &clock, uint64_t cycles)
+{
+    if (clock.freq == 1000000000ULL) {
+        /* 1GHZ freq, no need to scale cycles value */
+        return cycles;
+    } else {
+        return (double) cycles * 1000000000.0
+                / (double) clock.freq;
+    }
+}
+
+static inline
+uint64_t clock_offset_ns(const ClockInfos &clock)
+{
+    return clock.offset_s * 1000000000ULL
+            + clock_cycles_to_ns(clock, clock.offset);
+}
+
+static inline
+uint64_t ctf_get_real_timestamp(const ClockInfos &clock, uint64_t timestamp)
+{
+    uint64_t ts_nsec;
+    uint64_t tc_offset;
+
+    tc_offset = clock_offset_ns(clock);
+
+    ts_nsec = clock_cycles_to_ns(clock, timestamp);
+    ts_nsec += tc_offset;	/* Add offset */
+    return ts_nsec;
+}
+
+PacketIndex::PacketIndex(std::string packetIndexPath, const TraceSet &trace)
 {
     FILE *fp = fopen(packetIndexPath.c_str(), "r");
     if (!fp) {
@@ -56,33 +92,47 @@ PacketIndex::PacketIndex(std::string packetIndexPath)
         return;
     }
 
-    uint32_t packet_index_len = be32toh(header.packet_index_len);
-    if (packet_index_len == 0) {
+    uint32_t packetIndexLen = be32toh(header.packet_index_len);
+    if (packetIndexLen == 0) {
         std::cerr << "Error: packet index lenght cannot be 0" << std::endl;
         fclose(fp);
         return;
     }
 
-    ctf_packet_index *ctf_index = (ctf_packet_index*) calloc(packet_index_len, sizeof(char));
-    while (fread(ctf_index, packet_index_len, 1, fp) == 1) {
-        packet_index index;
+    CtfPacketIndex *ctfIndex = (CtfPacketIndex*) calloc(packetIndexLen, sizeof(char));
+    const auto &traceInfos = *trace.getTracesInfos().begin();
+    const auto &clockInfos = traceInfos->getClockInfos();
+    std::cout << "offset:" << clockInfos.offset << std::endl;
+    std::cout << "offset_s:" << clockInfos.offset_s << std::endl;
+    std::cout << "freq:" << clockInfos.freq << std::endl;
+
+    while (fread(ctfIndex, packetIndexLen, 1, fp) == 1) {
+        PacketHeader index;
         memset(&index, 0, sizeof(index));
-        index.offset = be64toh(ctf_index->offset);
-        index.packet_size = be64toh(ctf_index->packet_size);
-        index.content_size = be64toh(ctf_index->content_size);
-        index.ts_cycles.timestamp_begin = be64toh(ctf_index->timestamp_begin);
-        index.ts_cycles.timestamp_end = be64toh(ctf_index->timestamp_end);
-        index.events_discarded = be64toh(ctf_index->events_discarded);
-        index.events_discarded_len = 64;
-        index.data_offset = -1;
+        index.offset = be64toh(ctfIndex->offset);
+        index.packetSize = be64toh(ctfIndex->packetSize);
+        index.contentSize = be64toh(ctfIndex->contentSize);
+        index.tsCycles.timestampBegin = be64toh(ctfIndex->timestampBegin);
+        index.tsCycles.timestampEnd = be64toh(ctfIndex->timestampEnd);
+        index.tsReal.timestampBegin = ctf_get_real_timestamp(clockInfos, index.tsCycles.timestampBegin);
+        index.tsReal.timestampEnd = ctf_get_real_timestamp(clockInfos, index.tsCycles.timestampEnd);
+        index.eventsDiscarded = be64toh(ctfIndex->eventsDiscarded);
+        index.eventsDiscardedLen = 64;
+        index.dataOffset = -1;
+        this->streamId = be64toh(ctfIndex->streamId);
         indices.emplace_back(std::move(index));
     }
 
-    free(ctf_index);
+    free(ctfIndex);
     fclose(fp);
 }
 
-const std::vector<packet_index> &PacketIndex::getPacketIndex() const
+const std::vector<PacketHeader> &PacketIndex::getPacketIndex() const
 {
     return indices;
+}
+
+int PacketIndex::getStreamId() const
+{
+    return streamId;
 }

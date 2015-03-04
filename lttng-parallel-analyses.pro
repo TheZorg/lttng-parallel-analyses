@@ -19,7 +19,6 @@ TEMPLATE = app
 
 SOURCES += src/main.cpp \
     src/count/countanalysis.cpp \
-    src/common/traceanalysis.cpp \
     src/common/tracewrapper.cpp \
     src/cpu/cpuanalysis.cpp \
     src/cpu/cpucontext.cpp \
