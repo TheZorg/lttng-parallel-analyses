@@ -108,47 +108,47 @@ void IoContext::handleEnd()
 
 void IoContext::merge(const IoContext &other)
 {
-    for (const IoProcess &process : other.tids.values()) {
-        if (tids.contains(process.tid)) {
-            IoProcess &thisTid = tids[process.tid];
+    for (const IoProcess &otherProcess : other.tids.values()) {
+        if (tids.contains(otherProcess.tid)) {
+            IoProcess &thisProcess = tids[otherProcess.tid];
 
-            thisTid.totalReadLatency += process.totalReadLatency;
-            thisTid.totalWriteLatency += process.totalWriteLatency;
+            thisProcess.totalReadLatency += otherProcess.totalReadLatency;
+            thisProcess.totalWriteLatency += otherProcess.totalWriteLatency;
 
-            thisTid.readBytes += process.readBytes;
-            thisTid.writeBytes += process.writeBytes;
+            thisProcess.readBytes += otherProcess.readBytes;
+            thisProcess.writeBytes += otherProcess.writeBytes;
 
-            thisTid.readCount += process.readCount;
-            thisTid.writeCount += process.writeCount;
+            thisProcess.readCount += otherProcess.readCount;
+            thisProcess.writeCount += otherProcess.writeCount;
 
-            if (thisTid.currentSyscall) {
+            if (thisProcess.currentSyscall) {
                 // We have an unfinished syscall
-                if (process.unknownSyscall) {
+                if (otherProcess.unknownSyscall) {
                     // We need to check, in case we are at the end of the trace
-                    uint64_t latency = process.unknownSyscall->end - thisTid.currentSyscall->start;
-                    if (thisTid.currentSyscall->type == IOType::READ ||
-                        thisTid.currentSyscall->type == IOType::READWRITE) {
-                        int64_t ret = process.unknownSyscall->ret;
+                    uint64_t latency = otherProcess.unknownSyscall->end - thisProcess.currentSyscall->start;
+                    if (thisProcess.currentSyscall->type == IOType::READ ||
+                        thisProcess.currentSyscall->type == IOType::READWRITE) {
+                        int64_t ret = otherProcess.unknownSyscall->ret;
                         if (ret >= 0) {
-                            thisTid.totalReadLatency += latency;
-                            thisTid.readBytes += ret;
-                            thisTid.readCount++;
+                            thisProcess.totalReadLatency += latency;
+                            thisProcess.readBytes += ret;
+                            thisProcess.readCount++;
                         }
                     }
-                    if (thisTid.currentSyscall->type == IOType::WRITE ||
-                        thisTid.currentSyscall->type == IOType::READWRITE) {
-                        int64_t ret = process.unknownSyscall->ret;
+                    if (thisProcess.currentSyscall->type == IOType::WRITE ||
+                        thisProcess.currentSyscall->type == IOType::READWRITE) {
+                        int64_t ret = otherProcess.unknownSyscall->ret;
                         if (ret >= 0) {
-                            thisTid.totalWriteLatency += latency;
-                            thisTid.writeBytes += ret;
-                            thisTid.writeCount++;
+                            thisProcess.totalWriteLatency += latency;
+                            thisProcess.writeBytes += ret;
+                            thisProcess.writeCount++;
                         }
                     }
                 }
             }
-            thisTid.currentSyscall = process.currentSyscall;
+            thisProcess.currentSyscall = otherProcess.currentSyscall;
         } else {
-            tids[process.tid] = process;
+            tids[otherProcess.tid] = otherProcess;
         }
     }
 }
