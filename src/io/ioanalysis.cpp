@@ -45,6 +45,18 @@ std::vector<std::string> writeSyscalls = {"sys_write", "syscall_entry_write",
 std::vector<std::string> readWriteSyscalls = {"sys_splice", "syscall_entry_splice",
                                               "sys_sendfile64", "syscall_entry_sendfile64"};
 
+std::vector<std::string> exitSyscalls = {"syscall_exit_read",
+                                         "syscall_exit_recvmsg",
+                                         "syscall_exit_recvfrom",
+                                         "syscall_exit_readv",
+                                         "syscall_exit_write",
+                                         "syscall_exit_sendmsg",
+                                         "syscall_exit_sendto",
+                                         "syscall_exit_writev",
+                                         "syscall_exit_splice",
+                                         "syscall_exit_sendfile64",
+                                         "exit_syscall"};
+
 IoWorker::IoWorker(int id, TraceSet &set, timestamp_t *begin, timestamp_t *end, bool verbose) :
     TraceWorker(id, set, begin, end, verbose)
 {
@@ -74,8 +86,11 @@ IoContext IoWorker::doMap() const
         event_id_t id = getEventId(set, eventName);
         readWriteEventIds.insert(id);
     }
-
-    event_id_t exitSyscallId = getEventId(set, "exit_syscall");
+    std::set<event_id_t> exitEventIds {};
+    for (const std::string &eventName : exitSyscalls) {
+        event_id_t id = getEventId(set, eventName);
+        exitEventIds.insert(id);
+    }
 
     // Iterate through events
     uint64_t count = 0;
@@ -89,7 +104,7 @@ IoContext IoWorker::doMap() const
             data.handleSysWrite(event);
         } else if (readWriteEventIds.find(id) != readWriteEventIds.end()) {
             data.handleSysReadWrite(event);
-        } else if (id == exitSyscallId) {
+        } else if (exitEventIds.find(id) != exitEventIds.end()) {
             data.handleExitSyscall(event);
         }
     }
