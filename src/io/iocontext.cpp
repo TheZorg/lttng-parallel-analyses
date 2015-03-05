@@ -163,9 +163,15 @@ void IoContext::handleReadWrite(const tibee::trace::EventValue &event, IOType ty
     }
     int tid = event.getStreamEventContext()->GetField("tid")->AsInteger();
 
+    std::string comm = "";
+    if (event.getStreamEventContext()->HasField("procname")) {
+        comm = event.getStreamEventContext()->GetField("procname")->AsString();
+    }
+
     if (!tids.contains(tid)) {
         IoProcess p;
         p.tid = tid;
+        p.comm = comm;
         tids[tid] = p;
     }
     IoProcess &p = tids[tid];
