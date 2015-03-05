@@ -38,11 +38,10 @@ void CpuContext::handleSchedSwitch(const tibee::trace::EventValue &event)
         // We had a currently running task
         c.cpu_ns += timestamp - c.currentTask->start;
     } else if (prev_pid != 0) {
-        // We had an unknown running task, assume since beginning of trace
-        c.cpu_ns += timestamp - start;
-        c.currentTask = Task();
-        c.currentTask->start = start;
-        c.currentTask->end = timestamp;
+        // We had an unknown running task
+        c.unknownTask = Task();
+        c.unknownTask->end = timestamp;
+        c.unknownTask->tid = prev_pid;
     }
 
     // Calculate PID time
@@ -79,7 +78,8 @@ void CpuContext::handleEnd()
     for (Cpu &cpu : cpus) {
         if (cpu.currentTask) {
             cpu.cpu_ns += end - cpu.currentTask->start;
-            tids[cpu.currentTask->tid].cpu_ns += end - cpu.currentTask->start;
+            Process &p = tids[cpu.currentTask->tid];
+            p.cpu_ns += end - cpu.currentTask->start;
             cpu.currentTask = boost::none;
         }
     }
@@ -109,8 +109,8 @@ void CpuContext::merge(const CpuContext &other)
 
     // Merge CPUs
     for (const Cpu &otherCpu : other.cpus) {
-        Cpu &cpu = getCpu(otherCpu.id);
-        cpu.cpu_ns += otherCpu.cpu_ns;
+        Cpu &thisCpu = getCpu(otherCpu.id);
+        thisCpu.cpu_ns += otherCpu.cpu_ns;
     }
 
     // Merge TIDs
@@ -124,6 +124,36 @@ void CpuContext::merge(const CpuContext &other)
             thisTid.cpu_ns += otherTid.cpu_ns;
         } else {
             tids[tid] = otherTid;
+        }
+    }
+
+    // Do fixing
+    for (const Cpu &otherCpu : other.cpus) {
+        Cpu &thisCpu = getCpu(otherCpu.id);
+        // Check for unfinished task
+        if (thisCpu.currentTask) {
+            // Check if matching unknown task
+            if (otherCpu.unknownTask) {
+                // Merge cpu time
+                uint64_t taskTime = otherCpu.unknownTask->end - thisCpu.currentTask->start;
+                thisCpu.cpu_ns += taskTime;
+                if (thisCpu.currentTask->tid == otherCpu.unknownTask->tid) {
+                    // Merge process time
+                    Process &thisProcess = tids[thisCpu.currentTask->tid];
+                    thisProcess.cpu_ns += taskTime;
+                } else {
+                    std::cerr << "Mismatch." << std::endl;
+                }
+                // We matched this current, change to the next current
+                thisCpu.currentTask = otherCpu.currentTask;
+            } else {
+                // We are either at the end of the trace
+                // or the end of the task is not in this other chunk
+                // Keep the current unfinished task
+            }
+        } else {
+            // We did not have an unfinished task, take the next
+            thisCpu.currentTask = otherCpu.currentTask;
         }
     }
 }

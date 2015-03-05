@@ -43,6 +43,7 @@ struct Cpu
 {
     unsigned int id;
     boost::optional<Task> currentTask;
+    boost::optional<Task> unknownTask;
     uint64_t cpu_ns = 0;
     Cpu(int id) : id(id) {}
 };

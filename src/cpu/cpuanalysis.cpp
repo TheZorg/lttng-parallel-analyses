@@ -61,11 +61,13 @@ CpuContext CpuWorker::doMap() const
         return data;
     }
     uint64_t count = 0;
+    uint64_t schedSwitchCount = 0;
     for ((void)iter; iter != endIter; ++iter) {
         count++;
         const auto &event = *iter;
         event_id_t id = event.getId();
         if (id == schedSwitchId) {
+            schedSwitchCount++;
             data.handleSchedSwitch(event);
         }
     }
@@ -75,11 +77,10 @@ CpuContext CpuWorker::doMap() const
         const timestamp_t *end = getEndPos();
         std::string beginString = begin ? std::to_string(*begin) : "START";
         std::string endString = end ? std::to_string(*end) : "END";
-        std::cout << "Worker " << getId() << " processed " << count << " events between timestamps "
+        std::cout << "Worker " << getId() << " processed " << count << " events ("
+                  << schedSwitchCount << " sched_switch) between timestamps "
                   << beginString << " and " << endString << std::endl;
     }
-
-    data.handleEnd();
 
     return data;
 }
@@ -91,7 +92,7 @@ void CpuWorker::doReduce(CpuContext &final, const CpuContext &intermediate)
 
 bool CpuAnalysis::isOrderedReduce()
 {
-    return false;
+    return true;
 }
 
 void CpuAnalysis::doExecuteSerial()
@@ -113,11 +114,20 @@ void CpuAnalysis::doExecuteSerial()
     }
 
     // Iterate through sched_switch events
+    uint64_t count = 0;
+    uint64_t schedSwitchCount = 0;
     for (const auto &event : set) {
+        count++;
         event_id_t id = event.getId();
         if (id == schedSwitchId) {
+            schedSwitchCount++;
             data.handleSchedSwitch(event);
         }
+    }
+
+    if (getVerbose()) {
+        std::cout << "Worker processed " << count << " events ("
+                  << schedSwitchCount << " sched_switch)" << std::endl;
     }
 
     data.handleEnd();
