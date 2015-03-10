@@ -146,6 +146,7 @@ protected:
     virtual void printResults(ReduceResultType &data) = 0;
     virtual void doExecuteParallel()
     {
+        QThreadPool::globalInstance()->setMaxThreadCount(this->threads);
         if (!balanced) {
             doExecuteParallelUnbalanced();
         } else {
