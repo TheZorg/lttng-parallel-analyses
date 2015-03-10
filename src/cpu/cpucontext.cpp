@@ -152,6 +152,14 @@ void CpuContext::merge(const CpuContext &other)
                 // Keep the current unfinished task
             }
         } else {
+            if (otherCpu.unknownTask) {
+                // This could happen at the beginning of the trace (i.e. the
+                // very first sched_switch)
+                uint64_t taskTime = otherCpu.unknownTask->end - this->getStart();
+                thisCpu.cpu_ns += taskTime;
+                Process &thisProcess = tids[otherCpu.unknownTask->tid];
+                thisProcess.cpu_ns += taskTime;
+            }
             // We did not have an unfinished task, take the next
             thisCpu.currentTask = otherCpu.currentTask;
         }
