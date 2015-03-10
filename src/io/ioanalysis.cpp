@@ -157,8 +157,11 @@ void IoAnalysis::doExecuteSerial()
         readWriteEventIds.insert(id);
     }
 
-    event_id_t exitSyscallId = getEventId(set, "exit_syscall");
-
+    std::set<event_id_t> exitEventIds {};
+    for (const std::string &eventName : exitSyscalls) {
+        event_id_t id = getEventId(set, eventName);
+        exitEventIds.insert(id);
+    }
     // Iterate through events
     for (const auto &event : set) {
         event_id_t id = event.getId();
@@ -168,7 +171,7 @@ void IoAnalysis::doExecuteSerial()
             data.handleSysWrite(event);
         } else if (readWriteEventIds.find(id) != readWriteEventIds.end()) {
             data.handleSysReadWrite(event);
-        } else if (id == exitSyscallId) {
+        } else if (exitEventIds.find(id) != exitEventIds.end()) {
             data.handleExitSyscall(event);
         }
     }
