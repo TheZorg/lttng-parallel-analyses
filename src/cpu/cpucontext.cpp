@@ -142,7 +142,8 @@ void CpuContext::merge(const CpuContext &other)
                     Process &thisProcess = tids[thisCpu.currentTask->tid];
                     thisProcess.cpu_ns += taskTime;
                 } else {
-                    std::cerr << "Mismatch." << std::endl;
+                    std::cerr << "Mismatch: merging current tid=" << thisCpu.currentTask->tid
+                              << " with unknown tid=" << otherCpu.unknownTask << std::endl;
                 }
                 // We matched this current, change to the next current
                 thisCpu.currentTask = otherCpu.currentTask;
