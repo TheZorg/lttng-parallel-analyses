@@ -114,7 +114,7 @@ public slots:
         }
         if (doBenchmark) {
             int milliseconds = timer.elapsed();
-            std::cout << "Analysis time : " << milliseconds << "ms." << std::endl;
+            std::cout << "Analysis time (ms) : " << milliseconds << std::endl;
         }
         emit finished();
     }
