@@ -122,6 +122,7 @@ void CpuContext::merge(const CpuContext &other)
         if (tids.contains(tid)) {
             Process &thisTid = tids[tid];
             thisTid.cpu_ns += otherTid.cpu_ns;
+            thisTid.comm = otherTid.comm;
         } else {
             tids[tid] = otherTid;
         }
@@ -138,7 +139,7 @@ void CpuContext::merge(const CpuContext &other)
                 uint64_t taskTime = otherCpu.unknownTask->end - thisCpu.currentTask->start;
                 thisCpu.cpu_ns += taskTime;
                 if (thisCpu.currentTask->tid == otherCpu.unknownTask->tid) {
-                    // Merge process time
+                    // Merge process time and name
                     Process &thisProcess = tids[thisCpu.currentTask->tid];
                     thisProcess.cpu_ns += taskTime;
                 } else {
@@ -156,10 +157,15 @@ void CpuContext::merge(const CpuContext &other)
             if (otherCpu.unknownTask) {
                 // This could happen at the beginning of the trace (i.e. the
                 // very first sched_switch)
+
+                // TODO: Commented out for the moment to get same results as
+                // lttng-analyses
+                /*
                 uint64_t taskTime = otherCpu.unknownTask->end - this->getStart();
                 thisCpu.cpu_ns += taskTime;
                 Process &thisProcess = tids[otherCpu.unknownTask->tid];
                 thisProcess.cpu_ns += taskTime;
+                */
             }
             // We did not have an unfinished task, take the next
             thisCpu.currentTask = otherCpu.currentTask;
