@@ -27,6 +27,8 @@
 #include <QtConcurrent>
 
 #include <functional>
+#include <utility>
+#include <mutex>
 
 #include "common/packetindex.h"
 #include "common/traceanalysis.h"
@@ -170,37 +172,46 @@ protected:
         QDir traceDir(tracePath);
         QString metadataPath = traceDir.absoluteFilePath("metadata");
         QFileInfoList fileList = traceDir.entryInfoList(QStringList(), QDir::Files);
-        for (int i = 0; i < fileList.size(); i++) {
-            QFileInfo fileInfo = fileList.at(i);
+        std::mutex mapMutex;
+        auto f = QtConcurrent::map(fileList, [&](QFileInfo &fileInfo) {
             if (fileInfo.fileName() != "metadata") {
                 // Make a dir for the stream
                 QString streamDirPath = fileInfo.fileName() + ".d";
-                tmpDir.mkdir(streamDirPath);
-                tmpDir.cd(streamDirPath); // /tmp/kernel_per_stream-{...}/channel0_*.d
+                QDir thisTmpDir = tmpDir;
+                QDir thisTraceDir = traceDir;
+                thisTmpDir.mkdir(streamDirPath);
+                thisTmpDir.cd(streamDirPath); // /tmp/kernel_per_stream-{...}/channel0_*.d
 
                 // Make a symlink to the stream
-                QFile::link(fileInfo.absoluteFilePath(), tmpDir.absoluteFilePath(fileInfo.fileName()));
+                QFile::link(fileInfo.absoluteFilePath(), thisTmpDir.absoluteFilePath(fileInfo.fileName()));
 
                 // Make a symlink to the metadata
-                QFile::link(metadataPath, tmpDir.absoluteFilePath("metadata"));
+                QFile::link(metadataPath, thisTmpDir.absoluteFilePath("metadata"));
 
                 // Index
-                tmpDir.mkdir("index");
-                tmpDir.cd("index"); // /tmp/kernel_per_stream-{...}/channel0_*.d/index
-                traceDir.cd("index");
-                QFile::link(traceDir.absoluteFilePath(fileInfo.fileName() + ".idx"), tmpDir.absoluteFilePath(fileInfo.fileName() + ".idx"));
-                traceDir.cdUp();
-                tmpDir.cdUp(); // /tmp/kernel_per_stream-{...}/channel0_*.d
+                thisTmpDir.mkdir("index");
+                thisTmpDir.cd("index"); // /tmp/kernel_per_stream-{...}/channel0_*.d/index
+                thisTraceDir.cd("index");
+                QFile::link(thisTraceDir.absoluteFilePath(fileInfo.fileName() + ".idx"), tmpDir.absoluteFilePath(fileInfo.fileName() + ".idx"));
+                thisTraceDir.cdUp();
+                thisTmpDir.cdUp(); // /tmp/kernel_per_stream-{...}/channel0_*.d
 
                 // Add traceset
-                auto ret = traceSets.emplace(fileInfo.fileName().toStdString(), TraceSet());
-                // emplace returns a pair with first = iterator to the inserted pair
-                ret.first->second.addTrace(tmpDir.absolutePath().toStdString());
+                TraceSet *set = nullptr;
+                {
+                    std::lock_guard<std::mutex> guard(mapMutex); (void) guard;
+                    auto ret = traceSets.emplace(fileInfo.fileName().toStdString(), TraceSet());
+                    // emplace returns a pair with first = iterator to the inserted pair
+                    set = &ret.first->second;
+                }
+                if (set) set->addTrace(thisTmpDir.absolutePath().toStdString());
 
                 // Go back up
-                tmpDir.cdUp(); // /tmp/kernel_per_stream-{...}
+                thisTmpDir.cdUp(); // /tmp/kernel_per_stream-{...}
             }
-        }
+            return 0;
+        });
+        f.waitForFinished();
 
         // Parse packet indices
         std::vector<WorkerType> workers;
