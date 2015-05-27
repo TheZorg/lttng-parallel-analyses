@@ -36,16 +36,15 @@ enum class CommandLineParseResult {
 
 struct Options {
     QString analysisName = "";
-    QString analysisType = "";
     int threads = 1;
     bool verbose = false;
     bool benchmark = false;
     bool balanced = false;
+    bool parallel = true;
     QString tracePath = "";
 };
 
 QStringList analysisList = QStringList() << "count" << "cpu" << "io";
-QStringList typeList = QStringList() << "serial" << "parallel";
 
 CommandLineParseResult parseCommandLine(QCommandLineParser &parser, Options &opts, QString *errorMessage) {
     const QCommandLineOption helpOption = parser.addHelpOption();
@@ -73,10 +72,9 @@ CommandLineParseResult parseCommandLine(QCommandLineParser &parser, Options &opt
                                             "analysis name", "count");
     parser.addOption(analysisOption);
 
-    // Analysis type (serial vs parallel)
-    const QCommandLineOption typeOption(QStringList() << "T" << "type", "Type of analysis to execute [ serial | parallel ].",
-                                            "analysis type", "parallel");
-    parser.addOption(typeOption);
+    // Ask for serial analysis
+    const QCommandLineOption serialOption(QStringList() << "s" << "serial", "Execute the analysis serially. If this is enabled, the --thread option is ignored.");
+    parser.addOption(serialOption);
 
     // Trace directory is a positional argument (i.e. no option)
     parser.addPositionalArgument("<path/to/trace>", "Trace path.");
@@ -106,6 +104,10 @@ CommandLineParseResult parseCommandLine(QCommandLineParser &parser, Options &opt
         opts.balanced = true;
     }
 
+    if (parser.isSet(serialOption)) {
+        opts.parallel = false;
+    }
+
     const QString threadsString = parser.value(threadOption);
     int threads = threadsString.toInt();
     if (threads <= 0) {
@@ -120,13 +122,6 @@ CommandLineParseResult parseCommandLine(QCommandLineParser &parser, Options &opt
         return CommandLineParseResult::Error;
     }
     opts.analysisName = analysisString;
-
-    const QString typeString = parser.value(typeOption);
-    if (!typeList.contains(typeString)) {
-        *errorMessage = "Invalid analysis type.";
-        return CommandLineParseResult::Error;
-    }
-    opts.analysisType = typeString;
 
     const QStringList positionalArguments = parser.positionalArguments();
     if (positionalArguments.isEmpty()) {
@@ -202,11 +197,7 @@ int main(int argc, char *argv[]) {
     analysis->setVerbose(opts.verbose);
     analysis->setDoBenchmark(opts.benchmark);
     analysis->setBalanced(opts.balanced);
-    if (opts.analysisType == "parallel") {
-        analysis->setIsParallel(true);
-    } else if (opts.analysisType == "serial") {
-        analysis->setIsParallel(false);
-    }
+    analysis->setIsParallel(opts.parallel);
 
     QObject::connect(analysis, SIGNAL(finished()), &a, SLOT(quit()));
 
