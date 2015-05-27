@@ -66,3 +66,6 @@ DEPENDPATH += $$PWD/contrib/tigerbeetle/src
 INCLUDEPATH += $$PWD/src
 DEPENDPATH += $$PWD/src
 
+OTHER_FILES += \
+    README.md
+
