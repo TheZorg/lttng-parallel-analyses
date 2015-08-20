@@ -92,6 +92,8 @@ IoContext IoWorker::doMap() const
         exitEventIds.insert(id);
     }
 
+    event_id_t migrate_id = getEventId(set, "sched_migrate_task");
+
     // Iterate through events
     uint64_t count = 0;
     for ((void)iter; iter != endIter; ++iter) {
@@ -106,6 +108,8 @@ IoContext IoWorker::doMap() const
             data.handleSysReadWrite(event);
         } else if (exitEventIds.find(id) != exitEventIds.end()) {
             data.handleExitSyscall(event);
+        } else if (id == migrate_id) {
+            data.handleSchedMigrate(event);
         }
     }
 

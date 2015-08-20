@@ -22,22 +22,22 @@
 
 #include <babeltrace/babeltrace.h>
 
-TraceWrapper::TraceWrapper(QString tracePath) : ctx(NULL), tracePath(tracePath)
+Trace::Trace(std::string tracePath) : ctx(NULL), tracePath(tracePath)
 {
     ctx = bt_context_create();
-    int trace_id = bt_context_add_trace(ctx, this->tracePath.toStdString().c_str(), "ctf", NULL, NULL, NULL);
+    int trace_id = bt_context_add_trace(ctx, this->tracePath.c_str(), "ctf", NULL, NULL, NULL);
     if(trace_id < 0) {
         std::cerr << "Failed: bt_context_add_trace" << std::endl;
     }
 }
 
-TraceWrapper::TraceWrapper(TraceWrapper &&other) :
+Trace::Trace(Trace &&other) :
     ctx(std::move(other.ctx)), tracePath(std::move(other.tracePath))
 {
     other.ctx = nullptr;
 }
 
-TraceWrapper &TraceWrapper::operator=(TraceWrapper &&other)
+Trace &Trace::operator=(Trace &&other)
 {
     if (this != &other) {
         ctx = std::move(other.ctx);
@@ -47,12 +47,12 @@ TraceWrapper &TraceWrapper::operator=(TraceWrapper &&other)
     return *this;
 }
 
-TraceWrapper::~TraceWrapper() {
+Trace::~Trace() {
     if (ctx) {
         bt_context_put(ctx);
     }
 }
 
-bt_context *TraceWrapper::getContext() {
+bt_context *Trace::getContext() {
     return ctx;
 }

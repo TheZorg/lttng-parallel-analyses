@@ -19,7 +19,7 @@
 #ifndef TRACEWRAPPER_H
 #define TRACEWRAPPER_H
 
-#include<QString>
+#include <string>
 
 // Forward declarations
 struct bt_context;
@@ -28,20 +28,19 @@ struct bt_context;
  * \brief The TraceWrapper class is used to lazily initialize
  * contexts and add traces when needed.
  */
-class TraceWrapper {
+class Trace {
 public:
 
-    TraceWrapper(QString tracePath);
+    Trace(std::string tracePath);
 
     // Copying isn't allowed
-    TraceWrapper(const TraceWrapper &other) = delete;
+    Trace(const Trace &other) = delete;
 
     // Moving is ok though (C++11)
-    TraceWrapper(TraceWrapper &&other);
+    Trace(Trace &&other);
+    Trace &operator=(Trace &&other);
 
-    TraceWrapper &operator=(TraceWrapper &&other);
-
-    ~TraceWrapper();
+    ~Trace();
 
     /*!
      * \brief Initialize the context if not initialized
@@ -52,7 +51,7 @@ public:
 
 private:
     bt_context *ctx;
-    QString tracePath;
+    std::string tracePath;
 };
 
 #endif // TRACEWRAPPER_H

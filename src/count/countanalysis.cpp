@@ -31,6 +31,8 @@
 #include <trace/TraceSet.hpp>
 #include <base/BasicTypes.hpp>
 
+#include "common/tracewrapper.h"
+
 using namespace tibee;
 using namespace tibee::trace;
 

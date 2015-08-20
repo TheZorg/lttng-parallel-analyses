@@ -234,6 +234,7 @@ protected:
 
             // Try to split packets "evenly"
             uint64_t maxPacketSize = size/indices.size();
+//            uint64_t maxPacketSize = 4096*4096;
             if (this->verbose) {
                 std::cout << "Num packets for stream " << index.getStreamId()
                           << " : " << indices.size() << std::endl;
@@ -278,6 +279,9 @@ protected:
                           << " : " << numChunks << std::endl;
             }
 
+        }
+        if (this->verbose) {
+            std::cout << "Total chunks : " << workers.size() << std::endl;
         }
         traceDir.cdUp();
 

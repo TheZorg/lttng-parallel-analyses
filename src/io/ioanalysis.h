@@ -52,10 +52,10 @@ protected:
     virtual void doExecuteSerial();
     virtual void printResults(IoContext &data);
     virtual void doEnd(IoContext &data);
-    virtual void doExecuteParallelBalanced()
-    {
-        std::cerr << "Balanced analysis not yet supported." << std::endl;
-    }
+//    virtual void doExecuteParallelBalanced()
+//    {
+//        std::cerr << "Balanced analysis not yet supported." << std::endl;
+//    }
 };
 
 #endif // IOANALYSIS_H

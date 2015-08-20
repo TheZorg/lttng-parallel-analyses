@@ -35,13 +35,17 @@ struct Syscall {
     uint64_t end {};
     int fd = -1;
     int ret = -1;
-    uint64_t count {};
+};
+
+struct PseudoChunk {
+    boost::optional<Syscall> currentSyscall {};
+    boost::optional<Syscall> unknownSyscall {};
+    uint64_t end {};
 };
 
 struct IoProcess : public Process
 {
-    boost::optional<Syscall> currentSyscall {};
-    boost::optional<Syscall> unknownSyscall {};
+    std::vector<PseudoChunk> pseudoChunks {};
 
     uint64_t totalReadLatency {};
     uint64_t readCount {};
@@ -51,6 +55,7 @@ struct IoProcess : public Process
 
     uint64_t readBytes {};
     uint64_t writeBytes {};
+    IoProcess() { pseudoChunks.emplace_back(); }
 };
 
 class IoContext
@@ -62,6 +67,7 @@ public:
     void handleSysWrite(const tibee::trace::EventValue &event);
     void handleSysReadWrite(const tibee::trace::EventValue &event);
     void handleExitSyscall(const tibee::trace::EventValue &event);
+    void handleSchedMigrate(const tibee::trace::EventValue &event);
     void handleEnd();
 
     void merge(const IoContext &other);
@@ -69,6 +75,7 @@ public:
     const std::list<IoProcess> &getTidsByWrite();
     const std::list<IoProcess> &getTidsByRead();
 
+    void mergeSyscalls(IoProcess &thisProcess, PseudoChunk &thisProcessChunk, const PseudoChunk &otherProcessChunk);
 private:
     typedef QHash<int, IoProcess> IoProcessMap;
     IoProcessMap tids;

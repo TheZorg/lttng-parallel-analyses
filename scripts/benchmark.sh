@@ -28,7 +28,7 @@ main() {
         for (( t=1; t<=max_threads; t=t*2 ))
         do
             echo -e "${cyan}Testing $analysis analysis with $t threads${NC}"
-            args="--analysis $analysis --thread $t --type parallel --benchmark --balanced"
+            args="--analysis $analysis --thread $t --benchmark --balanced"
             echo -e "${blue}Cache cold${NC}"
             ms=$(./cache_cold.sh $program $args $trace_dir | awk '/Analysis time/{ print $NF; }')
             echo -e "$ms ms"
